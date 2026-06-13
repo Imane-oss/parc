@@ -13,5 +13,9 @@
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.0",
     "tailwindcss": "^4.3.0"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^2.4.5"
   }
 }
