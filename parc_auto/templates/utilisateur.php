@@ -16,16 +16,22 @@ try {
 $stmtTotal = $pdo->query("SELECT COUNT(*) FROM demandes_mission");
 $totalDemandes = $stmtTotal->fetchColumn();
 
-// 2. Récupérer les demandes approuvées
-$stmtApprouve = $pdo->query("SELECT COUNT(*) FROM demandes_mission WHERE statut = 'Approuvée'");
-$totalApprouve = $stmtApprouve->fetchColumn();
+// 2. Vérifier si la colonne statut existe avant d'exécuter les requêtes de statut
+$hasStatutColumn = (bool) $pdo->query("SHOW COLUMNS FROM demandes_mission LIKE 'statut'")->fetch(PDO::FETCH_ASSOC);
 
-// 3. Récupérer les demandes en attente
-$stmtAttente = $pdo->query("SELECT COUNT(*) FROM demandes_mission WHERE statut = 'En attente'");
-$totalAttente = $stmtAttente->fetchColumn();
+if ($hasStatutColumn) {
+    $stmtApprouve = $pdo->query("SELECT COUNT(*) FROM demandes_mission WHERE statut = 'Approuvée'");
+    $totalApprouve = $stmtApprouve->fetchColumn();
+
+    $stmtAttente = $pdo->query("SELECT COUNT(*) FROM demandes_mission WHERE statut = 'En attente'");
+    $totalAttente = $stmtAttente->fetchColumn();
+} else {
+    $totalApprouve = 0;
+    $totalAttente = 0;
+}
 
 // 4. Récupérer toutes les demandes pour le tableau
-$stmtList = $pdo->query("SELECT * FROM demandes_mission ORDER BY date_creation DESC");
+$stmtList = $pdo->query("SELECT * FROM demandes_mission ORDER BY created_at DESC");
 $demandes = $stmtList->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>

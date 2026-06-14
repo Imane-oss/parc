@@ -33,9 +33,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST)) {
         $message = "<div class='alert alert-warning'><i class='fa-solid fa-triangle-exclamation me-2'></i>Veuillez remplir tous les champs obligatoires!</div>";
     } else {
         try {
-            // هنا تم إصلاح الاستعلام ليشمل كل الحقول المتواجدة بالفورم وقاعدة البيانات
-            $sql = "INSERT INTO demandes_mission (nom, prenom, matricule, direction, email, ville_depart, destination, date_depart, date_retour, motif, statut, date_creation) 
-                    VALUES (:nom, :prenom, :matricule, :direction, :email, :ville_depart, :destination, :date_depart, :date_retour, :motif, 'En attente', NOW())";
+            // Insérer les données selon le schéma actuel de la table demandes_mission
+            $sql = "INSERT INTO demandes_mission (nom, prenom, matricule, direction, ville_depart, destination, date_depart, date_retour, motif_mission, created_at) 
+                    VALUES (:nom, :prenom, :matricule, :direction, :ville_depart, :destination, :date_depart, :date_retour, :motif_mission, NOW())";
             
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
@@ -43,12 +43,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST)) {
                 ':prenom' => $prenom,
                 ':matricule' => $matricule,
                 ':direction' => $direction,
-                ':email' => $email,
-                ':ville_depart' => $ville_depart, 
+                ':ville_depart' => $ville_depart,
                 ':destination' => $destination,
                 ':date_depart' => $date_depart,
                 ':date_retour' => $date_retour,
-                ':motif' => $motif
+                ':motif_mission' => $motif
             ]);
 
             $demande_id = $pdo->lastInsertId();

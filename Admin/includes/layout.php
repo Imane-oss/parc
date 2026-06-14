@@ -9,6 +9,12 @@ if (isset($_SESSION['user_id'])) {
     $user = $stmt->fetch();
 }
 
+// Fetch pending demands for notifications
+$notifStmt = $pdo->prepare("SELECT * FROM demandes_mission ORDER BY created_at DESC LIMIT 5");
+$notifStmt->execute();
+$notifications = $notifStmt->fetchAll(PDO::FETCH_ASSOC);
+$notifCount = count($notifications);
+
 // Automatic page detector
 $current_script = basename($_SERVER['PHP_SELF']);
 if ($current_script === 'demandes.php') {
@@ -152,7 +158,7 @@ function isActive(string $page, string $activePage): bool
                             <span>MES DEMANDES</span>
                         </div>
                         <span class="<?= isActive('demandes', $activePage) ? 'bg-white/20 text-white' : 'bg-blue-50 text-[#0066cc]' ?> flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold flex-shrink-0">
-                            2
+                            <?= $notifCount ?>
                         </span>
                     </a>
                 </li>
@@ -208,7 +214,9 @@ function isActive(string $page, string $activePage): bool
                 <div class="relative">
                     <button id="notif-btn" type="button" class="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-                        <span class="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500 border border-white"></span>
+                        <?php if($notifCount > 0): ?>
+                        <span class="absolute top-2 right-2 flex h-3 w-3 items-center justify-center rounded-full bg-red-500 border border-white text-[8px] font-bold text-white"><?= $notifCount ?></span>
+                        <?php endif; ?>
                     </button>
                     
                     <div id="notif-menu" class="profile-dropdown absolute right-0 top-full mt-2 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden" style="width: 320px;">
@@ -216,34 +224,26 @@ function isActive(string $page, string $activePage): bool
                         <!-- Header -->
                         <div class="px-5 py-4 border-b border-slate-50 flex items-center justify-between bg-white">
                             <h3 class="text-[13px] font-extrabold text-[#001737] tracking-tight uppercase">NOTIFICATIONS</h3>
-                            <span class="bg-[#f0f7ff] text-[#0066cc] text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider">2 NOUVELLES</span>
+                            <span class="bg-[#f0f7ff] text-[#0066cc] text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider"><?= $notifCount ?> NOUVELLES</span>
                         </div>
                         
                         <!-- List -->
                         <div class="max-h-[28rem] overflow-y-auto">
-                            <!-- Item 1 -->
+                            <?php foreach($notifications as $notif): ?>
                             <a href="demandes.php" class="flex items-start gap-4 p-5 border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white">
                                 <div class="w-10 h-10 rounded-2xl bg-[#fffbeb] text-[#f59e0b] flex items-center justify-center flex-shrink-0">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 14h6"/><path d="M9 10h6"/><path d="M9 18h6"/></svg>
                                 </div>
                                 <div class="flex-1">
                                     <h4 class="text-sm font-bold text-slate-800 mb-0.5">Nouvelle Demande</h4>
-                                    <p class="text-xs font-medium text-slate-500 leading-relaxed mb-2">Ahmed Alami a soumis une demande pour Casablanca.</p>
-                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">IL Y A 2 MIN</span>
+                                    <p class="text-xs font-medium text-slate-500 leading-relaxed mb-2"><?= htmlspecialchars($notif['nom'] . ' ' . $notif['prenom']) ?> a soumis une demande pour <?= htmlspecialchars($notif['destination']) ?>.</p>
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest"><?= date('d/m/Y H:i', strtotime($notif['created_at'])) ?></span>
                                 </div>
                             </a>
-                            
-                            <!-- Item 2 -->
-                            <a href="demandes.php" class="flex items-start gap-4 p-5 border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white">
-                                <div class="w-10 h-10 rounded-2xl bg-[#fffbeb] text-[#f59e0b] flex items-center justify-center flex-shrink-0">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 14h6"/><path d="M9 10h6"/><path d="M9 18h6"/></svg>
-                                </div>
-                                <div class="flex-1">
-                                    <h4 class="text-sm font-bold text-slate-800 mb-0.5">Nouvelle Demande</h4>
-                                    <p class="text-xs font-medium text-slate-500 leading-relaxed mb-2">Fatima Zahra a soumis une demande pour Rabat.</p>
-                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">IL Y A 1 HEURE</span>
-                                </div>
-                            </a>
+                            <?php endforeach; ?>
+                            <?php if($notifCount == 0): ?>
+                            <div class="p-5 text-center text-xs text-slate-500">Aucune notification</div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
