@@ -6,6 +6,11 @@ include 'includes/layout.php';
 $availableVehicles = $pdo->prepare("SELECT marque, matricule FROM vehicles WHERE statut = 'disponible' ORDER BY id DESC");
 $availableVehicles->execute();
 $availableVehicles = $availableVehicles->fetchAll(PDO::FETCH_ASSOC);
+
+// Récupérer les demandes de mission
+$demandesStmt = $pdo->prepare("SELECT * FROM demandes_mission ORDER BY created_at DESC");
+$demandesStmt->execute();
+$demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
@@ -31,7 +36,7 @@ $availableVehicles = $availableVehicles->fetchAll(PDO::FETCH_ASSOC);
             </button>
             <button onclick="switchTab('combines')" id="btn-tab-combines" 
                 class="tab-btn text-[#8799ae] hover:text-[#001737] font-medium text-xs tracking-wide px-5 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer">
-                ORDRES COMBINÉS 
+                DEMANDES COMBINÉS 
                 <span id="badge-combines-top" class="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-medium">0</span>
             </button>
         </div>
@@ -63,76 +68,64 @@ $availableVehicles = $availableVehicles->fetchAll(PDO::FETCH_ASSOC);
                     </tr>
                 </thead>
                 <tbody id="attente-tbody" class="divide-y divide-[#e4ebf4]/60">
-                    <tr id="row-demand-1" class="attente-row row-animate hover:bg-slate-50/50" data-name="Ahmed Alami" data-dest="Casablanca - Centre" data-role="COMMERCIAL" data-motif="Audit annuel client" data-date="2026-05-24" data-days="3" data-service="INFORMATIQUE" data-direction="SRM">
-                        <td class="py-4 px-6">
-                            <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-xl bg-blue-50 text-[#0066cc] flex items-center justify-center font-bold text-sm">A</div>
-                                <div>
-                                    <div class="text-sm font-medium text-[#001737]">Ahmed Alami</div>
-                                    <div class="text-[11px] text-[#8799ae] tracking-wide uppercase">COMMERCIAL</div>
-                                    <div class="text-[10px] text-[#8799ae] mt-1 uppercase">Service: INFORMATIQUE • Direction: SRM</div>
+                    <?php if (count($demandes) > 0): ?>
+                        <?php foreach ($demandes as $demande): 
+                            $name = htmlspecialchars($demande['nom'] . ' ' . $demande['prenom']);
+                            $dest = htmlspecialchars($demande['destination']);
+                            $motif = htmlspecialchars($demande['motif_mission']);
+                            $role = htmlspecialchars($demande['direction']);
+                            $service = "PARC AUTO";
+                            $direction = htmlspecialchars($demande['direction']);
+                            $date = htmlspecialchars($demande['date_depart']);
+                            
+                            // Calculer la durée
+                            $dateDepart = new DateTime($demande['date_depart']);
+                            $dateRetour = new DateTime($demande['date_retour']);
+                            $interval = $dateDepart->diff($dateRetour);
+                            $days = $interval->days > 0 ? $interval->days : 1;
+                            
+                            $initial = strtoupper(substr($demande['nom'], 0, 1));
+                            $id = $demande['id'];
+                        ?>
+                        <tr id="row-demand-<?= $id ?>" class="attente-row row-animate hover:bg-slate-50/50" data-name="<?= $name ?>" data-dest="<?= $dest ?>" data-role="<?= $role ?>" data-motif="<?= $motif ?>" data-date="<?= $date ?>" data-days="<?= $days ?>" data-service="<?= $service ?>" data-direction="<?= $direction ?>" data-matricule="<?= htmlspecialchars($demande['matricule'] ?? '') ?>">
+                            <td class="py-4 px-6">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-blue-50 text-[#0066cc] flex items-center justify-center font-bold text-sm"><?= $initial ?></div>
+                                    <div>
+                                        <div class="text-sm font-medium text-[#001737]"><?= $name ?></div>
+                                        <div class="text-[11px] text-[#8799ae] tracking-wide uppercase"><?= $role ?></div>
+                                        <div class="text-[10px] text-[#8799ae] mt-1 uppercase">Service: <?= $service ?> &bull; Direction: <?= $direction ?></div>
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td class="py-4 px-6">
-                            <div class="text-sm font-medium text-[#001737]">Casablanca - Centre</div>
-                            <div class="text-xs text-[#8799ae]">"Audit annuel client"</div>
-                        </td>
-                        <td class="py-4 px-6">
-                            <div class="text-sm text-[#001737]">2026-05-24</div>
-                            <div class="text-[11px] font-medium text-[#8799ae]">3 JOURS</div>
-                        </td>
-                        <td class="py-4 px-6">
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200/40">
-                                EN ATTENTE
-                            </span>
-                        </td>
-                        <td class="py-4 px-6 text-right">
-                            <div class="flex items-center justify-end gap-3">
-                                <button onclick="openAffectationModal('Ahmed Alami', 'Casablanca - Centre', 'row-demand-1')" class="px-4 py-2 bg-[#0066cc] text-white text-xs font-medium tracking-wide uppercase rounded-xl hover:bg-[#0055b3] transition-all shadow-sm cursor-pointer">
-                                    ACCEPTER
-                                </button>
-                                <button onclick="refuseDemandeDirect('Ahmed Alami', 'Casablanca - Centre', 'row-demand-1')" class="p-2 text-slate-400 hover:text-red-500 rounded-xl transition-all cursor-pointer" title="Refuser la demande">
-                                    ✕
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr id="row-demand-2" class="attente-row row-animate hover:bg-slate-50/50" data-name="Youssef Benani" data-dest="Tanger - Port" data-role="MANAGER" data-motif="Signature contrat" data-date="2026-05-26" data-days="2" data-service="COMMERCIAL" data-direction="DIRECTION RÉGIONALE">
-                        <td class="py-4 px-6">
-                            <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-sm">Y</div>
-                                <div>
-                                    <div class="text-sm font-medium text-[#001737]">Youssef Benani</div>
-                                    <div class="text-[11px] text-[#8799ae] tracking-wide uppercase">MANAGER</div>
-                                    <div class="text-[10px] text-[#8799ae] mt-1 uppercase">Service: COMMERCIAL • Direction: DIRECTION RÉGIONALE</div>
+                            </td>
+                            <td class="py-4 px-6">
+                                <div class="text-sm font-medium text-[#001737]"><?= $dest ?></div>
+                                <div class="text-xs text-[#8799ae]">"<?= $motif ?>"</div>
+                            </td>
+                            <td class="py-4 px-6">
+                                <div class="text-sm text-[#001737]"><?= $date ?></div>
+                                <div class="text-[11px] font-medium text-[#8799ae]"><?= $days ?> JOURS</div>
+                            </td>
+                            <td class="py-4 px-6">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200/40">
+                                    EN ATTENTE
+                                </span>
+                            </td>
+                            <td class="py-4 px-6 text-right">
+                                <div class="flex items-center justify-end gap-3">
+                                    <button onclick="openAffectationModal('<?= addslashes($name) ?>', '<?= addslashes($dest) ?>', 'row-demand-<?= $id ?>')" class="px-4 py-2 bg-[#0066cc] text-white text-xs font-medium tracking-wide uppercase rounded-xl hover:bg-[#0055b3] transition-all shadow-sm cursor-pointer">
+                                        ACCEPTER
+                                    </button>
+                                    <button onclick="refuseDemandeDirect('<?= addslashes($name) ?>', '<?= addslashes($dest) ?>', 'row-demand-<?= $id ?>')" class="p-2 text-slate-400 hover:text-red-500 rounded-xl transition-all cursor-pointer" title="Refuser la demande">
+                                        ✕
+                                    </button>
                                 </div>
-                            </div>
-                        </td>
-                        <td class="py-4 px-6">
-                            <div class="text-sm font-medium text-[#001737]">Tanger - Port</div>
-                            <div class="text-xs text-[#8799ae]">"Signature contrat"</div>
-                        </td>
-                        <td class="py-4 px-6">
-                            <div class="text-sm text-[#001737]">2026-05-26</div>
-                            <div class="text-[11px] font-medium text-[#8799ae]">2 JOURS</div>
-                        </td>
-                        <td class="py-4 px-6">
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200/40">
-                                EN ATTENTE
-                            </span>
-                        </td>
-                        <td class="py-4 px-6 text-right">
-                            <div class="flex items-center justify-end gap-3">
-                                <button onclick="openAffectationModal('Youssef Benani', 'Tanger - Port', 'row-demand-2')" class="px-4 py-2 bg-[#0066cc] text-white text-xs font-medium tracking-wide uppercase rounded-xl hover:bg-[#0055b3] transition-all shadow-sm cursor-pointer">
-                                    ACCEPTER
-                                </button>
-                                <button onclick="refuseDemandeDirect('Youssef Benani', 'Tanger - Port', 'row-demand-2')" class="p-2 text-slate-400 hover:text-red-500 rounded-xl transition-all cursor-pointer" title="Refuser la demande">
-                                    ✕
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr><td colspan="5" class="py-8 text-center text-[#8799ae]">Aucune demande en attente</td></tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -153,51 +146,6 @@ $availableVehicles = $availableVehicles->fetchAll(PDO::FETCH_ASSOC);
                     </tr>
                 </thead>
                 <tbody id="historique-tbody" class="divide-y divide-[#e4ebf4]/60">
-                    <tr id="hist-row-static" class="hist-row row-animate hover:bg-slate-50/50" data-name="Sara Mansouri" data-dest="Rabat - Agdal" data-role="TECHNICIENNE" data-motif="Maintenance site B" data-date="2026-05-25" data-days="1" data-service="TECHNIQUE" data-direction="DIRECTION PROVINCIALE">
-                        <td class="py-4 px-6">
-                            <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-xl bg-emerald-50 text-[#10b981] flex items-center justify-center font-bold text-sm">S</div>
-                                <div>
-                                    <div class="text-sm font-medium text-[#001737]">Sara Mansouri</div>
-                                    <div class="text-[11px] text-[#8799ae] tracking-wide uppercase">TECHNICIENNE</div>
-                                    <div class="text-[10px] text-[#8799ae] mt-1 uppercase">Service: TECHNIQUE • Direction: DIRECTION PROVINCIALE</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="py-4 px-6">
-                            <div class="text-sm font-medium text-[#001737]">Rabat - Agdal</div>
-                            <div class="text-xs text-[#8799ae]">"Maintenance site B"</div>
-                        </td>
-                        <td class="py-4 px-6">
-                            <div class="text-sm text-[#001737]">2026-05-25</div>
-                            <div class="text-[11px] font-medium text-[#8799ae]">1 JOUR</div>
-                        </td>
-                        <td class="py-4 px-6">
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-medium bg-emerald-50 text-emerald-600 border border-emerald-200/30">
-                                VALIDÉE
-                            </span>
-                        </td>
-                        <td class="py-4 px-6">
-                            <div class="flex items-center gap-3">
-                                <div class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 text-xs">➔</div>
-                                <div>
-                                    <div class="text-xs font-medium text-[#001737]">Peugeot 5008</div>
-                                    <div class="text-[10px] text-[#8799ae]">EF-456-GH</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="py-4 px-6">
-                            <a href="#" class="inline-flex items-center text-xs font-medium text-[#0066cc] hover:underline uppercase">Voir PDF</a>
-                        </td>
-                        <td class="py-4 px-6 text-center">
-                            <div class="flex items-center justify-center gap-3">
-                                <button onclick="retablirRow('hist-row-static', 'Sara Mansouri', 'Rabat - Agdal', 'TECHNICIENNE', 'Maintenance site B', '2026-05-25', '1')" 
-                                    class="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl text-base transform hover:scale-115 transition-all font-medium cursor-pointer" title="Rétablir la demande">⟲</button>
-                                <button onclick="deleteHistoriqueRow('hist-row-static')" 
-                                    class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all font-medium cursor-pointer" title="Supprimer définitivement">🗑</button>
-                            </div>
-                        </td>
-                    </tr>
                 </tbody>
             </table>
         </div>
@@ -309,8 +257,99 @@ $availableVehicles = $availableVehicles->fetchAll(PDO::FETCH_ASSOC);
     let selectedVehiclePlate = "";
 
     document.addEventListener("DOMContentLoaded", () => {
+        loadHistoriqueFromStorage();
         updateCounts();
     });
+
+    // ─── Persistance historique via localStorage ──────────────────────────────
+    const HIST_KEY = 'parc_historique_rows';
+
+    function saveHistoriqueToStorage() {
+        const rows = document.querySelectorAll('.hist-row');
+        const data = [];
+        rows.forEach(row => {
+            data.push({
+                id:        row.id,
+                name:      row.dataset.name      || '',
+                dest:      row.dataset.dest      || '',
+                role:      row.dataset.role      || '',
+                motif:     row.dataset.motif     || '',
+                date:      row.dataset.date      || '',
+                days:      row.dataset.days      || '1',
+                service:   row.dataset.service   || '',
+                direction: row.dataset.direction || '',
+                matricule: row.dataset.matricule || '',
+                vehicle:   row.dataset.vehicle   || '',
+                plate:     row.dataset.plate     || ''
+            });
+        });
+        localStorage.setItem(HIST_KEY, JSON.stringify(data));
+    }
+
+    function buildHistRowHtml(d) {
+        return `
+            <tr id="${d.id}" class="hist-row row-animate hover:bg-slate-50/50"
+                data-name="${d.name}" data-dest="${d.dest}" data-role="${d.role}"
+                data-motif="${d.motif}" data-date="${d.date}" data-days="${d.days}"
+                data-service="${d.service}" data-direction="${d.direction}"
+                data-matricule="${d.matricule}" data-vehicle="${d.vehicle}" data-plate="${d.plate}">
+                <td class="py-4 px-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-50 text-[#10b981] flex items-center justify-center font-bold text-sm">${d.name[0] || '?'}</div>
+                        <div>
+                            <div class="text-sm font-medium text-[#001737]">${d.name}</div>
+                            <div class="text-[11px] text-[#8799ae] tracking-wide uppercase">${d.role}</div>
+                            <div class="text-[10px] text-[#8799ae] mt-1 uppercase">Service: ${d.service} &bull; Direction: ${d.direction}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="py-4 px-6">
+                    <div class="text-sm font-medium text-[#001737]">${d.dest}</div>
+                    <div class="text-xs text-[#8799ae]">&quot;${d.motif}&quot;</div>
+                </td>
+                <td class="py-4 px-6">
+                    <div class="text-sm text-[#001737]">${d.date}</div>
+                    <div class="text-[11px] font-medium text-[#8799ae] uppercase">${d.days} JOURS</div>
+                </td>
+                <td class="py-4 px-6">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-medium bg-emerald-50 text-emerald-600 border border-emerald-200/30">
+                        VALID&Eacute;E
+                    </span>
+                </td>
+                <td class="py-4 px-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 text-xs">&rarr;</div>
+                        <div>
+                            <div class="text-xs font-medium text-[#001737]">${d.vehicle}</div>
+                            <div class="text-[10px] text-[#8799ae]">${d.plate}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="py-4 px-6">
+                    <a href="#" onclick="voirPdfHistorique('${d.id}'); return false;" class="inline-flex items-center text-xs font-medium text-[#0066cc] hover:underline uppercase cursor-pointer">Voir PDF</a>
+                </td>
+                <td class="py-4 px-6 text-center">
+                    <div class="flex items-center justify-center gap-3">
+                        <button onclick="retablirRow('${d.id}','${d.name}','${d.dest}','${d.role}','${d.motif}','${d.date}','${d.days}','${d.service}','${d.direction}','${d.matricule}')"
+                            class="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl text-base transform hover:scale-115 transition-all font-medium cursor-pointer" title="R&eacute;tablir la demande">&x021F2;</button>
+                        <button onclick="deleteHistoriqueRow('${d.id}')"
+                            class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all font-medium cursor-pointer" title="Supprimer d&eacute;finitivement">&#128465;</button>
+                    </div>
+                </td>
+            </tr>`;
+    }
+
+    function loadHistoriqueFromStorage() {
+        const stored = localStorage.getItem(HIST_KEY);
+        if (!stored) return;
+        try {
+            const rows = JSON.parse(stored);
+            const tbody = document.getElementById('historique-tbody');
+            rows.forEach(d => {
+                tbody.insertAdjacentHTML('beforeend', buildHistRowHtml(d));
+            });
+        } catch(e) { console.warn('Historique storage error', e); }
+    }
 
     function openAffectationModal(collaborator, destination, rowId) {
         currentTargetRowId = rowId;
@@ -354,10 +393,12 @@ $availableVehicles = $availableVehicles->fetchAll(PDO::FETCH_ASSOC);
         submitBtn.className = "px-6 py-3 rounded-2xl text-xs font-medium tracking-wide uppercase transition-all bg-[#0066cc] hover:bg-[#0055b3] text-white shadow-md cursor-pointer";
     }
 
-    function confirmAndGenerate() {
+    async function confirmAndGenerate() {
         if (!currentTargetRowId) return;
         const originalRow = document.getElementById(currentTargetRowId);
         if (!originalRow) return;
+
+        const dbId = currentTargetRowId.replace('row-demand-', '');
 
         const name = originalRow.dataset.name;
         const role = originalRow.dataset.role;
@@ -367,66 +408,99 @@ $availableVehicles = $availableVehicles->fetchAll(PDO::FETCH_ASSOC);
         const days = originalRow.dataset.days;
         const service = originalRow.dataset.service || 'PARC AUTO';
         const direction = originalRow.dataset.direction || 'DIRECTION GÉNÉRALE';
-        const uniqueId = 'hist-row-' + Date.now();
+        const matricule = originalRow.dataset.matricule || '';
 
-        const histTbody = document.getElementById('historique-tbody');
-        const newRowHtml = `
-            <tr id="${uniqueId}" class="hist-row row-animate row-fade-in hover:bg-slate-50/50" data-name="${name}" data-dest="${dest}" data-role="${role}" data-motif="${motif}" data-date="${date}" data-days="${days}" data-service="${service}" data-direction="${direction}">
-                <td class="py-4 px-6">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-emerald-50 text-[#10b981] flex items-center justify-center font-bold text-sm">${name[0]}</div>
-                        <div>
-                            <div class="text-sm font-medium text-[#001737]">${name}</div>
-                            <div class="text-[11px] text-[#8799ae] tracking-wide uppercase">${role}</div>
-                            <div class="text-[10px] text-[#8799ae] mt-1 uppercase">Service: ${service} • Direction: ${direction}</div>
-                        </div>
-                    </div>
-                </td>
-                <td class="py-4 px-6">
-                    <div class="text-sm font-medium text-[#001737]">${dest}</div>
-                    <div class="text-xs text-[#8799ae]">"${motif}"</div>
-                </td>
-                <td class="py-4 px-6">
-                    <div class="text-sm text-[#001737]">${date}</div>
-                    <div class="text-[11px] font-medium text-[#8799ae] uppercase">${days} JOURS</div>
-                </td>
-                <td class="py-4 px-6">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-medium bg-emerald-50 text-emerald-600 border border-emerald-200/30">
-                        VALIDÉE
-                    </span>
-                </td>
-                <td class="py-4 px-6">
-                    <div class="flex items-center gap-3">
-                        <div class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 text-xs">➔</div>
-                        <div>
-                            <div class="text-xs font-medium text-[#001737]">${selectedVehicleName}</div>
-                            <div class="text-[10px] text-[#8799ae]">${selectedVehiclePlate}</div>
-                        </div>
-                    </div>
-                </td>
-                <td class="py-4 px-6">
-                    <a href="#" class="inline-flex items-center text-xs font-medium text-[#0066cc] hover:underline uppercase">Voir PDF</a>
-                </td>
-                <td class="py-4 px-6 text-center">
-                    <div class="flex items-center justify-center gap-3">
-                        <button onclick="retablirRow('${uniqueId}', '${name}', '${dest}', '${role}', '${motif}', '${date}', '${days}', '${service}', '${direction}')" 
-                            class="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl text-base transform hover:scale-115 transition-all font-medium cursor-pointer" title="Rétablir la demande">⟲</button>
-                        <button onclick="deleteHistoriqueRow('${uniqueId}')" 
-                            class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all font-medium cursor-pointer" title="Supprimer définitivement">🗑</button>
-                    </div>
-                </td>
-            </tr>
-        `;
-        histTbody.insertAdjacentHTML('beforeend', newRowHtml);
+        const submitBtn = document.getElementById('btn-submit-affectation');
+        const oldText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'GÉNÉRATION...';
 
-        originalRow.classList.add('row-fade-out');
-        setTimeout(() => {
-            originalRow.remove();
-            updateCounts();
-            showToast("Mission validée et transférée à l'historique !", "bg-emerald-50 text-emerald-600");
-        }, 300);
+        try {
+            const response = await fetch('accept_mission.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: dbId,
+                    vehicle_name: selectedVehicleName,
+                    vehicle_plate: selectedVehiclePlate
+                })
+            });
+            const result = await response.json();
 
-        closeAffectationModal();
+            if (result.success) {
+                const uniqueId = 'hist-row-' + Date.now();
+                const histTbody = document.getElementById('historique-tbody');
+                const newRowHtml = `
+                    <tr id="${uniqueId}" class="hist-row row-animate row-fade-in hover:bg-slate-50/50" data-name="${name}" data-dest="${dest}" data-role="${role}" data-motif="${motif}" data-date="${date}" data-days="${days}" data-service="${service}" data-direction="${direction}" data-matricule="${matricule}" data-vehicle="${selectedVehicleName}" data-plate="${selectedVehiclePlate}">
+                        <td class="py-4 px-6">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-emerald-50 text-[#10b981] flex items-center justify-center font-bold text-sm">${name[0]}</div>
+                                <div>
+                                    <div class="text-sm font-medium text-[#001737]">${name}</div>
+                                    <div class="text-[11px] text-[#8799ae] tracking-wide uppercase">${role}</div>
+                                    <div class="text-[10px] text-[#8799ae] mt-1 uppercase">Service: ${service} • Direction: ${direction}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="text-sm font-medium text-[#001737]">${dest}</div>
+                            <div class="text-xs text-[#8799ae]">"${motif}"</div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="text-sm text-[#001737]">${date}</div>
+                            <div class="text-[11px] font-medium text-[#8799ae] uppercase">${days} JOURS</div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-medium bg-emerald-50 text-emerald-600 border border-emerald-200/30">
+                                VALIDÉE
+                            </span>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center gap-3">
+                                <div class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 text-xs">➔</div>
+                                <div>
+                                    <div class="text-xs font-medium text-[#001737]">${selectedVehicleName}</div>
+                                    <div class="text-[10px] text-[#8799ae]">${selectedVehiclePlate}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <a href="#" onclick="voirPdfHistorique('${uniqueId}'); return false;" class="inline-flex items-center text-xs font-medium text-[#0066cc] hover:underline uppercase cursor-pointer">Voir PDF</a>
+                        </td>
+                        <td class="py-4 px-6 text-center">
+                            <div class="flex items-center justify-center gap-3">
+                                <button onclick="retablirRow('${uniqueId}', '${name}', '${dest}', '${role}', '${motif}', '${date}', '${days}', '${service}', '${direction}', '${matricule}')" 
+                                    class="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl text-base transform hover:scale-115 transition-all font-medium cursor-pointer" title="Rétablir la demande">⟲</button>
+                                <button onclick="deleteHistoriqueRow('${uniqueId}')" 
+                                    class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all font-medium cursor-pointer" title="Supprimer définitivement">🗑</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                histTbody.insertAdjacentHTML('beforeend', newRowHtml);
+                saveHistoriqueToStorage();
+
+                originalRow.classList.add('row-fade-out');
+                setTimeout(() => {
+                    originalRow.remove();
+                    updateCounts();
+                    showToast(result.message, "bg-emerald-50 text-emerald-600");
+                    if (result.message.includes('Failed')) {
+                        alert(result.message); // Show prominent error if email failed
+                    }
+                }, 300);
+
+                closeAffectationModal();
+            } else {
+                alert("Erreur: " + result.message);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Erreur de connexion au serveur.");
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = oldText;
+        }
     }
 
     function refuseDemandeDirect(collaborator, destination, rowId) {
@@ -447,13 +521,14 @@ $availableVehicles = $availableVehicles->fetchAll(PDO::FETCH_ASSOC);
             targetRow.classList.add('row-fade-out');
             setTimeout(() => {
                 targetRow.remove();
+                saveHistoriqueToStorage();
                 updateCounts();
-                showToast("Mission supprimée définitivement.", "bg-slate-100 text-slate-600");
+                showToast("Mission supprim\u00e9e d\u00e9finitivement.", "bg-slate-100 text-slate-600");
             }, 300);
         }
     }
 
-    function retablirRow(rowId, name, dest, role, motif, date, days, service = 'PARC AUTO', direction = 'DIRECTION GÉNÉRALE') {
+    function retablirRow(rowId, name, dest, role, motif, date, days, service = 'PARC AUTO', direction = 'DIRECTION GÉNÉRALE', matricule = '') {
         const targetRow = document.getElementById(rowId);
         if (!targetRow) return;
 
@@ -461,7 +536,7 @@ $availableVehicles = $availableVehicles->fetchAll(PDO::FETCH_ASSOC);
         const attenteTbody = document.getElementById('attente-tbody');
         
         const restoredHtml = `
-            <tr id="${attenteId}" class="attente-row row-animate row-fade-in hover:bg-slate-50/50" data-name="${name}" data-dest="${dest}" data-role="${role}" data-motif="${motif}" data-date="${date}" data-days="${days}" data-service="${service}" data-direction="${direction}">
+            <tr id="${attenteId}" class="attente-row row-animate row-fade-in hover:bg-slate-50/50" data-name="${name}" data-dest="${dest}" data-role="${role}" data-motif="${motif}" data-date="${date}" data-days="${days}" data-service="${service}" data-direction="${direction}" data-matricule="${matricule}">
                 <td class="py-4 px-6">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-blue-50 text-[#0066cc] flex items-center justify-center font-bold text-sm">${name[0]}</div>
@@ -638,6 +713,7 @@ $availableVehicles = $availableVehicles->fetchAll(PDO::FETCH_ASSOC);
                 days: row.dataset.days,
                 service: row.dataset.service || 'PARC AUTO',
                 direction: row.dataset.direction || 'DIRECTION GÉNÉRALE',
+                matricule: row.dataset.matricule || '',
                 vehicle: vehName,
                 plate: vehPlate
             });
@@ -707,12 +783,35 @@ $availableVehicles = $availableVehicles->fetchAll(PDO::FETCH_ASSOC);
         });
     }
 
+    // ─── buildPdfBlob : pour l'onglet DEMANDES COMBINÉS ──────────────────────
     async function buildPdfBlob(date) {
         const missions = globalGroupedOrders[date];
-        if(!missions || missions.length === 0) return null;
-
+        if (!missions || missions.length === 0) return null;
         try {
-            const url = 'Demande ordre mission conbiné .pdf';
+            return await buildSinglePdfBlob({
+                name:      missions[0].name,
+                matricule: missions[0].matricule,
+                role:      missions[0].role,
+                service:   missions[0].service,
+                direction: missions[0].direction,
+                dest:      missions[0].dest,
+                motif:     missions[0].motif,
+                vehicle:   missions[0].vehicle,
+                plate:     missions[0].plate,
+                days:      missions[0].days,
+                date:      date
+            });
+        } catch (e) {
+            console.error(e);
+            alert("Erreur lors de la g\u00e9n\u00e9ration du PDF.");
+            return null;
+        }
+    }
+
+    // ─── buildSinglePdfBlob : remplit le template PDF original ───────────────
+    async function buildSinglePdfBlob(rowData) {
+        try {
+            const url = 'Demande ordre mission conbiné.pdf';
             const res = await fetch(url);
             if(!res.ok) throw new Error("Erreur chargement PDF");
             const existingPdfBytes = await res.arrayBuffer();
@@ -720,16 +819,13 @@ $availableVehicles = $availableVehicles->fetchAll(PDO::FETCH_ASSOC);
             const finalPdf = await PDFLib.PDFDocument.create();
             const templateDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
             
-            // Copier la Page 1 (Demande) et Page 2 (Ordre)
-            const [page1, page2] = await finalPdf.copyPages(templateDoc, [0, 1]);
+            const [page1] = await finalPdf.copyPages(templateDoc, [0]);
             finalPdf.addPage(page1);
-            finalPdf.addPage(page2);
 
             const fontSize = 10;
             const textColor = PDFLib.rgb(0, 0, 0);
             const font = await finalPdf.embedFont(PDFLib.StandardFonts.Helvetica);
 
-            // --- PAGE 1 ---
             const P1_NOM_X = 200;        const P1_NOM_Y = 725;
             const P1_PRENOM_X = 367;     const P1_PRENOM_Y = 725;
             const P1_MATRIC_X = 180;     const P1_MATRIC_Y = 687;
@@ -744,78 +840,67 @@ $availableVehicles = $availableVehicles->fetchAll(PDO::FETCH_ASSOC);
             const P1_DATE_D_X = 245;     const P1_DATE_D_Y = 399;
             const P1_DATE_R_X = 245;     const P1_DATE_R_Y = 363;
 
-            // --- PAGE 2 ---
-            const P2_ORDRE_X = 277;      const P2_ORDRE_Y = 728;
-            const P2_AGENT_X = 58;
-            const P2_AGENT_Y = 645;
-            const P2_AGENT2_Y = 613;
-            const P2_AGENT3_Y = 581;
-            const P2_AGENT4_Y = 549;
-            const P2_MLE_X = 383;
-            const P2_VEHIC_X = 129;      const P2_VEHIC_Y = 420;
-            const P2_DEST_X = 174;       const P2_DEST_Y = 383;
-            const P2_MOTIF_X = 135;      const P2_MOTIF_Y = 347;
-            const P2_DATE_D_X = 232;     const P2_DATE_D_Y = 312;
-            const P2_DATE_R_X = 232;     const P2_DATE_R_Y = 276;
-
             const writeField = (page, text, x, y) => {
-                page.drawText(text, { x, y, size: fontSize, font, color: textColor });
+                page.drawText(text || '', { x, y, size: fontSize, font, color: textColor });
             };
 
-            const leader = missions[0];
-            const nameParts = leader.name.trim().split(' ');
-            const nom = nameParts.length > 1 ? nameParts.slice(-1)[0].toUpperCase() : leader.name.toUpperCase();
+            const nameParts = rowData.name.trim().split(' ');
+            const nom = nameParts.length > 1 ? nameParts.slice(-1)[0].toUpperCase() : rowData.name.toUpperCase();
             const prenom = nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : '';
-            const matriculeLeader = "M" + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+            const matriculeVal = rowData.matricule || ("M" + String(Math.floor(Math.random() * 10000)).padStart(4, '0'));
 
             writeField(page1, nom, P1_NOM_X, P1_NOM_Y);
             writeField(page1, prenom, P1_PRENOM_X, P1_PRENOM_Y);
-            writeField(page1, matriculeLeader, P1_MATRIC_X, P1_MATRIC_Y);
-            writeField(page1, leader.role, P1_FONCT_X, P1_FONCT_Y);
-            writeField(page1, leader.service || "PARC AUTO", P1_SERVICE_X, P1_SERVICE_Y);
-            writeField(page1, leader.direction || "DIRECTION GÉNÉRALE", P1_DIRECT_X, P1_DIRECT_Y);
-
-            const accompagnes = missions.slice(1).map(m => m.name).join(' / ');
-            writeField(page1, accompagnes || '-', P1_ACCOMP_X, P1_ACCOMP_Y);
+            writeField(page1, matriculeVal, P1_MATRIC_X, P1_MATRIC_Y);
+            writeField(page1, rowData.role || '', P1_FONCT_X, P1_FONCT_Y);
+            writeField(page1, rowData.service || 'PARC AUTO', P1_SERVICE_X, P1_SERVICE_Y);
+            writeField(page1, rowData.direction || 'DIRECTION GÉNÉRALE', P1_DIRECT_X, P1_DIRECT_Y);
+            writeField(page1, '-', P1_ACCOMP_X, P1_ACCOMP_Y);
             writeField(page1, "Véhicule de service", P1_TRANS_X, P1_TRANS_Y);
-            writeField(page1, leader.vehicle + " / " + leader.plate, P1_VEHIC_X, P1_VEHIC_Y);
-            writeField(page1, leader.dest, P1_LIEU_X, P1_LIEU_Y);
-            writeField(page1, leader.motif, P1_OBJET_X, P1_OBJET_Y);
-            writeField(page1, date, P1_DATE_D_X, P1_DATE_D_Y);
+            writeField(page1, (rowData.vehicle || '') + ' / ' + (rowData.plate || ''), P1_VEHIC_X, P1_VEHIC_Y);
+            writeField(page1, rowData.dest || '', P1_LIEU_X, P1_LIEU_Y);
+            writeField(page1, rowData.motif || '', P1_OBJET_X, P1_OBJET_Y);
+            writeField(page1, rowData.date || '', P1_DATE_D_X, P1_DATE_D_Y);
 
-            let dateRetour = date;
-            if (leader.days && parseInt(leader.days) > 1) {
-                const d = new Date(date);
-                d.setDate(d.getDate() + parseInt(leader.days) - 1);
+            let dateRetour = rowData.date || '';
+            if (rowData.days && parseInt(rowData.days) > 1) {
+                const d = new Date(rowData.date);
+                d.setDate(d.getDate() + parseInt(rowData.days) - 1);
                 dateRetour = d.toISOString().split('T')[0];
             }
             writeField(page1, dateRetour, P1_DATE_R_X, P1_DATE_R_Y);
-
-            const numeroOrdre = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0') + '/2026';
-            writeField(page2, numeroOrdre, P2_ORDRE_X, P2_ORDRE_Y);
-
-            const agentYs = [P2_AGENT_Y, P2_AGENT2_Y, P2_AGENT3_Y, P2_AGENT4_Y];
-            for (let i = 0; i < 4; i++) {
-                if (missions[i]) {
-                    writeField(page2, missions[i].name.toUpperCase(), P2_AGENT_X, agentYs[i]);
-                    const mat = i === 0 ? matriculeLeader : "M" + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
-                    writeField(page2, mat, P2_MLE_X, agentYs[i]);
-                }
-            }
-
-            writeField(page2, leader.vehicle + " / " + leader.plate, P2_VEHIC_X, P2_VEHIC_Y);
-            writeField(page2, leader.dest, P2_DEST_X, P2_DEST_Y);
-            writeField(page2, leader.motif, P2_MOTIF_X, P2_MOTIF_Y);
-            writeField(page2, date, P2_DATE_D_X, P2_DATE_D_Y);
-            writeField(page2, dateRetour, P2_DATE_R_X, P2_DATE_R_Y);
 
             const pdfBytes = await finalPdf.save();
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             return URL.createObjectURL(blob);
         } catch (e) {
             console.error(e);
-            alert("Erreur lors de la génération du PDF. Vérifiez que le fichier 'Demande ordre mission conbiné .pdf' est bien présent.");
+            alert("Erreur lors de la génération du PDF.");
             return null;
+        }
+    }
+
+    async function voirPdfHistorique(rowId) {
+        const row = document.getElementById(rowId);
+        if (!row) return;
+        const rowData = {
+            name: row.dataset.name || '',
+            role: row.dataset.role || '',
+            dest: row.dataset.dest || '',
+            motif: row.dataset.motif || '',
+            date: row.dataset.date || '',
+            days: row.dataset.days || '1',
+            service: row.dataset.service || 'PARC AUTO',
+            direction: row.dataset.direction || 'DIRECTION GÉNÉRALE',
+            matricule: row.dataset.matricule || '',
+            vehicle: row.dataset.vehicle || '',
+            plate: row.dataset.plate || ''
+        };
+        const blobUrl = await buildSinglePdfBlob(rowData);
+        if (blobUrl) {
+            currentPdfBlobUrl = blobUrl;
+            document.getElementById('pdf-preview-iframe').src = blobUrl;
+            document.getElementById('apercu-pdf-modal').classList.remove('hidden');
         }
     }
 
