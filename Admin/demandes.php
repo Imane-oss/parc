@@ -393,10 +393,12 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
         submitBtn.className = "px-6 py-3 rounded-2xl text-xs font-medium tracking-wide uppercase transition-all bg-[#0066cc] hover:bg-[#0055b3] text-white shadow-md cursor-pointer";
     }
 
-    function confirmAndGenerate() {
+    async function confirmAndGenerate() {
         if (!currentTargetRowId) return;
         const originalRow = document.getElementById(currentTargetRowId);
         if (!originalRow) return;
+
+        const dbId = currentTargetRowId.replace('row-demand-', '');
 
         const name = originalRow.dataset.name;
         const role = originalRow.dataset.role;
@@ -407,67 +409,98 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
         const service = originalRow.dataset.service || 'PARC AUTO';
         const direction = originalRow.dataset.direction || 'DIRECTION GÉNÉRALE';
         const matricule = originalRow.dataset.matricule || '';
-        const uniqueId = 'hist-row-' + Date.now();
 
-        const histTbody = document.getElementById('historique-tbody');
-        const newRowHtml = `
-            <tr id="${uniqueId}" class="hist-row row-animate row-fade-in hover:bg-slate-50/50" data-name="${name}" data-dest="${dest}" data-role="${role}" data-motif="${motif}" data-date="${date}" data-days="${days}" data-service="${service}" data-direction="${direction}" data-matricule="${matricule}" data-vehicle="${selectedVehicleName}" data-plate="${selectedVehiclePlate}">
-                <td class="py-4 px-6">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-emerald-50 text-[#10b981] flex items-center justify-center font-bold text-sm">${name[0]}</div>
-                        <div>
-                            <div class="text-sm font-medium text-[#001737]">${name}</div>
-                            <div class="text-[11px] text-[#8799ae] tracking-wide uppercase">${role}</div>
-                            <div class="text-[10px] text-[#8799ae] mt-1 uppercase">Service: ${service} • Direction: ${direction}</div>
-                        </div>
-                    </div>
-                </td>
-                <td class="py-4 px-6">
-                    <div class="text-sm font-medium text-[#001737]">${dest}</div>
-                    <div class="text-xs text-[#8799ae]">"${motif}"</div>
-                </td>
-                <td class="py-4 px-6">
-                    <div class="text-sm text-[#001737]">${date}</div>
-                    <div class="text-[11px] font-medium text-[#8799ae] uppercase">${days} JOURS</div>
-                </td>
-                <td class="py-4 px-6">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-medium bg-emerald-50 text-emerald-600 border border-emerald-200/30">
-                        VALIDÉE
-                    </span>
-                </td>
-                <td class="py-4 px-6">
-                    <div class="flex items-center gap-3">
-                        <div class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 text-xs">➔</div>
-                        <div>
-                            <div class="text-xs font-medium text-[#001737]">${selectedVehicleName}</div>
-                            <div class="text-[10px] text-[#8799ae]">${selectedVehiclePlate}</div>
-                        </div>
-                    </div>
-                </td>
-                <td class="py-4 px-6">
-                    <a href="#" onclick="voirPdfHistorique('${uniqueId}'); return false;" class="inline-flex items-center text-xs font-medium text-[#0066cc] hover:underline uppercase cursor-pointer">Voir PDF</a>
-                </td>
-                <td class="py-4 px-6 text-center">
-                    <div class="flex items-center justify-center gap-3">
-                        <button onclick="retablirRow('${uniqueId}', '${name}', '${dest}', '${role}', '${motif}', '${date}', '${days}', '${service}', '${direction}', '${matricule}')" 
-                            class="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl text-base transform hover:scale-115 transition-all font-medium cursor-pointer" title="Rétablir la demande">⟲</button>
-                        <button onclick="deleteHistoriqueRow('${uniqueId}')" 
-                            class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all font-medium cursor-pointer" title="Supprimer définitivement">🗑</button>
-                    </div>
-                </td>
-            </tr>
-        `;
-        histTbody.insertAdjacentHTML('beforeend', newRowHtml);
-        saveHistoriqueToStorage();
+        const submitBtn = document.getElementById('btn-submit-affectation');
+        const oldText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'GÉNÉRATION...';
 
-        originalRow.classList.add('row-fade-out');
-        setTimeout(() => {
-            originalRow.remove();
-            updateCounts();
-            showToast("Mission valid\u00e9e et transf\u00e9r\u00e9e \u00e0 l'historique !", "bg-emerald-50 text-emerald-600");
-        }, 300);
+        try {
+            const response = await fetch('accept_mission.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: dbId,
+                    vehicle_name: selectedVehicleName,
+                    vehicle_plate: selectedVehiclePlate
+                })
+            });
+            const result = await response.json();
 
-        closeAffectationModal();
+            if (result.success) {
+                const uniqueId = 'hist-row-' + Date.now();
+                const histTbody = document.getElementById('historique-tbody');
+                const newRowHtml = `
+                    <tr id="${uniqueId}" class="hist-row row-animate row-fade-in hover:bg-slate-50/50" data-name="${name}" data-dest="${dest}" data-role="${role}" data-motif="${motif}" data-date="${date}" data-days="${days}" data-service="${service}" data-direction="${direction}" data-matricule="${matricule}" data-vehicle="${selectedVehicleName}" data-plate="${selectedVehiclePlate}">
+                        <td class="py-4 px-6">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-emerald-50 text-[#10b981] flex items-center justify-center font-bold text-sm">${name[0]}</div>
+                                <div>
+                                    <div class="text-sm font-medium text-[#001737]">${name}</div>
+                                    <div class="text-[11px] text-[#8799ae] tracking-wide uppercase">${role}</div>
+                                    <div class="text-[10px] text-[#8799ae] mt-1 uppercase">Service: ${service} • Direction: ${direction}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="text-sm font-medium text-[#001737]">${dest}</div>
+                            <div class="text-xs text-[#8799ae]">"${motif}"</div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="text-sm text-[#001737]">${date}</div>
+                            <div class="text-[11px] font-medium text-[#8799ae] uppercase">${days} JOURS</div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-medium bg-emerald-50 text-emerald-600 border border-emerald-200/30">
+                                VALIDÉE
+                            </span>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center gap-3">
+                                <div class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 text-xs">➔</div>
+                                <div>
+                                    <div class="text-xs font-medium text-[#001737]">${selectedVehicleName}</div>
+                                    <div class="text-[10px] text-[#8799ae]">${selectedVehiclePlate}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <a href="#" onclick="voirPdfHistorique('${uniqueId}'); return false;" class="inline-flex items-center text-xs font-medium text-[#0066cc] hover:underline uppercase cursor-pointer">Voir PDF</a>
+                        </td>
+                        <td class="py-4 px-6 text-center">
+                            <div class="flex items-center justify-center gap-3">
+                                <button onclick="retablirRow('${uniqueId}', '${name}', '${dest}', '${role}', '${motif}', '${date}', '${days}', '${service}', '${direction}', '${matricule}')" 
+                                    class="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl text-base transform hover:scale-115 transition-all font-medium cursor-pointer" title="Rétablir la demande">⟲</button>
+                                <button onclick="deleteHistoriqueRow('${uniqueId}')" 
+                                    class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all font-medium cursor-pointer" title="Supprimer définitivement">🗑</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                histTbody.insertAdjacentHTML('beforeend', newRowHtml);
+                saveHistoriqueToStorage();
+
+                originalRow.classList.add('row-fade-out');
+                setTimeout(() => {
+                    originalRow.remove();
+                    updateCounts();
+                    showToast(result.message, "bg-emerald-50 text-emerald-600");
+                    if (result.message.includes('Failed')) {
+                        alert(result.message); // Show prominent error if email failed
+                    }
+                }, 300);
+
+                closeAffectationModal();
+            } else {
+                alert("Erreur: " + result.message);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Erreur de connexion au serveur.");
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = oldText;
+        }
     }
 
     function refuseDemandeDirect(collaborator, destination, rowId) {
