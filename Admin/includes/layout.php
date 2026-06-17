@@ -3,14 +3,23 @@ require_once __DIR__.'/db_connection.php';
 
 // Fetch logged-in user info
 $user = null;
-if (isset($_SESSION['user_id'])) {
-    $stmt = $pdo->prepare('SELECT fullname AS name, email, role FROM users WHERE id = ?');
-    $stmt->execute([$_SESSION['user_id']]);
+$layoutUserId = $_SESSION['user_id'] ?? null;
+
+if (!$layoutUserId) {
+    $stmtAdmin = $pdo->query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+    if ($adminRow = $stmtAdmin->fetch(PDO::FETCH_ASSOC)) {
+        $layoutUserId = $adminRow['id'];
+    }
+}
+
+if ($layoutUserId) {
+    $stmt = $pdo->prepare('SELECT fullname AS name, email, role, profile_photo FROM users WHERE id = ?');
+    $stmt->execute([$layoutUserId]);
     $user = $stmt->fetch();
 }
 
 // Fetch pending demands for notifications
-$notifStmt = $pdo->prepare("SELECT * FROM demandes_mission ORDER BY created_at DESC LIMIT 5");
+$notifStmt = $pdo->prepare("SELECT * FROM demandes_mission WHERE DATE(created_at) = CURDATE() ORDER BY created_at DESC LIMIT 5");
 $notifStmt->execute();
 $notifications = $notifStmt->fetchAll(PDO::FETCH_ASSOC);
 $notifCount = count($notifications);
@@ -254,9 +263,18 @@ function isActive(string $page, string $activePage): bool
                         <p id="header-user-name" class="text-sm font-bold text-slate-900 leading-tight"><?php echo htmlspecialchars($userName); ?></p>
                         <p class="text-[10px] font-bold text-slate-400 tracking-wider"><?php echo htmlspecialchars($userRole); ?></p>
                     </div>
-                    <div id="avatar-container" class="h-10 w-10 rounded-2xl overflow-hidden bg-slate-200 border-2 border-transparent transition-colors">
-                        <img id="header-avatar-img" src="https://ui-avatars.com/api/?name=<?= urlencode($userName) ?>&background=e2e8f0&color=475569" alt="Avatar" class="h-full w-full object-cover">
+                    <div id="avatar-container" class="relative h-10 w-10 rounded-2xl overflow-hidden bg-slate-200 border-2 border-transparent transition-colors group-hover:border-slate-300" title="Changer la photo de profil">
+                        <?php if(!empty($user['profile_photo'])): ?>
+                            <img id="header-avatar-img" src="<?php echo htmlspecialchars($user['profile_photo']); ?>" alt="Avatar" class="h-full w-full object-cover">
+                        <?php else: ?>
+                            <img id="header-avatar-img" src="https://ui-avatars.com/api/?name=<?= urlencode($userName) ?>&background=e2e8f0&color=475569" alt="Avatar" class="h-full w-full object-cover">
+                        <?php endif; ?>
+                        
+                        <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onclick="document.getElementById('profile-upload-input').click(); event.stopPropagation();">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                        </div>
                     </div>
+                    <input type="file" id="profile-upload-input" class="hidden" accept="image/*" onchange="uploadProfilePhoto(this)">
                 </button>
 
                 <div id="profile-menu" class="profile-dropdown absolute right-0 top-full mt-2 bg-white border border-slate-100 rounded-2xl shadow-xl p-2 z-50" style="width:280px">
@@ -264,7 +282,11 @@ function isActive(string $page, string $activePage): bool
                     <!-- User info header -->
                     <div class="px-4 py-3 border-b border-slate-50 text-center">
                         <div id="dropdown-user-initial" class="w-10 h-10 rounded-xl bg-blue-50 text-[#0066cc] flex items-center justify-center font-extrabold text-base mx-auto mb-2 overflow-hidden">
-                            <?php echo strtoupper(mb_substr($userName, 0, 1)); ?>
+                            <?php if(!empty($user['profile_photo'])): ?>
+                                <img src="<?php echo htmlspecialchars($user['profile_photo']); ?>" alt="Avatar" class="w-full h-full object-cover">
+                            <?php else: ?>
+                                <?php echo strtoupper(mb_substr($userName, 0, 1)); ?>
+                            <?php endif; ?>
                         </div>
                         <p id="dropdown-user-name" class="text-sm font-bold text-slate-800"><?php echo htmlspecialchars($userName); ?></p>
                         <p class="text-[10px] font-bold text-[#0066cc] bg-blue-50 px-2 py-0.5 rounded-full inline-block mt-1 tracking-wider"><?php echo htmlspecialchars($userRole); ?></p>
@@ -301,16 +323,7 @@ function isActive(string $page, string $activePage): bool
                     if (dn) dn.textContent = savedName;
                     if (di && savedName.length > 0) di.textContent = savedName.charAt(0).toUpperCase();
                 }
-                const savedPhoto = localStorage.getItem('profile_photo');
-                if (savedPhoto) {
-                    const hImg = document.getElementById('header-avatar-img');
-                    if (hImg) hImg.src = savedPhoto;
-                    
-                    const dropdownInitialBox = document.getElementById('dropdown-user-initial');
-                    if (dropdownInitialBox) {
-                        dropdownInitialBox.innerHTML = '<img src="' + savedPhoto + '" alt="Avatar" class="w-full h-full object-cover">';
-                    }
-                }
+                // Note: Profile photo is now loaded directly from DB via PHP (not localStorage)
 
                 const profileBtn = document.getElementById('profile-btn');
                 const profileMenu = document.getElementById('profile-menu');
@@ -409,4 +422,40 @@ function isActive(string $page, string $activePage): bool
                 // Initial sync on page load
                 syncProfileCounts();
             });
+
+            async function uploadProfilePhoto(input) {
+                if(!input.files || input.files.length === 0) return;
+                const file = input.files[0];
+                const formData = new FormData();
+                formData.append('photo', file);
+
+                try {
+                    const res = await fetch('upload_profile_photo.php', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    if(data.success) {
+                        const hImg = document.getElementById('header-avatar-img');
+                        if(hImg) hImg.src = data.path;
+                        const dropdownAvatar = document.getElementById('dropdown-user-initial');
+                        if (dropdownAvatar) {
+                            dropdownAvatar.innerHTML = '<img src="' + data.path + '" alt="Avatar" class="w-full h-full object-cover">';
+                            dropdownAvatar.classList.remove('bg-blue-50', 'text-[#0066cc]');
+                        }
+                        
+                        const settingsProfilePhoto = document.getElementById('profile-photo');
+                        if (settingsProfilePhoto) {
+                            settingsProfilePhoto.src = data.path;
+                            if (typeof showSettingsToast === 'function') {
+                                showSettingsToast('Photo de profil mise à jour avec succès !');
+                            }
+                        }
+                        
+                        // Update localstorage
+                        localStorage.setItem('profile_photo', data.path);
+                    } else {
+                        alert(data.error || "Erreur lors de l'upload");
+                    }
+                } catch(e) {
+                    alert("Erreur lors de l'upload de l'image.");
+                }
+            }
         </script>

@@ -8,9 +8,19 @@ $availableVehicles->execute();
 $availableVehicles = $availableVehicles->fetchAll(PDO::FETCH_ASSOC);
 
 // Récupérer les demandes de mission
-$demandesStmt = $pdo->prepare("SELECT * FROM demandes_mission ORDER BY created_at DESC");
+$demandesStmt = $pdo->prepare("SELECT * FROM demandes_mission WHERE statut = 'En attente' OR statut IS NULL ORDER BY created_at DESC");
 $demandesStmt->execute();
 $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Récupérer l'historique (Approuvées)
+$histStmt = $pdo->prepare("SELECT * FROM demandes_mission WHERE statut = 'Approuvée' ORDER BY created_at DESC");
+$histStmt->execute();
+$historique = $histStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Récupérer les refusées
+$refusStmt = $pdo->prepare("SELECT * FROM demandes_mission WHERE statut = 'Refusée' ORDER BY created_at DESC");
+$refusStmt->execute();
+$refusees = $refusStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
@@ -27,12 +37,17 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
             <button onclick="switchTab('attente')" id="btn-tab-attente" 
                 class="tab-btn bg-white text-[#001737] font-medium text-xs tracking-wide px-5 py-2 rounded-xl shadow-sm border border-[#e4ebf4]/60 flex items-center gap-2 transition-all cursor-pointer">
                 EN ATTENTE 
-                <span id="badge-attente-top" class="w-5 h-5 rounded-full bg-[#f59e0b] text-white flex items-center justify-center text-[10px] font-medium">2</span>
+                <span id="badge-attente-top" class="w-5 h-5 rounded-full bg-[#f59e0b] text-white flex items-center justify-center text-[10px] font-medium">0</span>
+            </button>
+            <button onclick="switchTab('refusees')" id="btn-tab-refusees" 
+                class="tab-btn text-[#8799ae] hover:text-[#001737] font-medium text-xs tracking-wide px-5 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer">
+                REFUSÉES 
+                <span id="badge-refusees-top" class="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px] font-medium">0</span>
             </button>
             <button onclick="switchTab('historique')" id="btn-tab-historique" 
                 class="tab-btn text-[#8799ae] hover:text-[#001737] font-medium text-xs tracking-wide px-5 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer">
                 HISTORIQUE 
-                <span id="badge-historique-top" class="w-5 h-5 rounded-full bg-[#001737] text-white flex items-center justify-center text-[10px] font-medium">1</span>
+                <span id="badge-historique-top" class="w-5 h-5 rounded-full bg-[#001737] text-white flex items-center justify-center text-[10px] font-medium">0</span>
             </button>
             <button onclick="switchTab('combines')" id="btn-tab-combines" 
                 class="tab-btn text-[#8799ae] hover:text-[#001737] font-medium text-xs tracking-wide px-5 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer">
@@ -129,8 +144,85 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
                 </tbody>
             </table>
         </div>
+        </div>
     </div>
 
+    <!-- TAB REFUSEES -->
+    <div id="tab-refusees" class="hidden w-full bg-white rounded-3xl border border-[#e4ebf4] overflow-hidden shadow-sm transition-all">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b border-[#e4ebf4] bg-[#fcfdfe]">
+                        <th class="py-4 px-6 text-xs font-semibold text-[#8799ae] tracking-wider">COLLABORATEUR</th>
+                        <th class="py-4 px-6 text-xs font-semibold text-[#8799ae] tracking-wider">DESTINATION / MOTIF</th>
+                        <th class="py-4 px-6 text-xs font-semibold text-[#8799ae] tracking-wider">PÉRIODE</th>
+                        <th class="py-4 px-6 text-xs font-semibold text-[#8799ae] tracking-wider">STATUS</th>
+                        <th class="py-4 px-6 text-xs font-semibold text-[#8799ae] tracking-wider text-center">ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody id="refusees-tbody" class="divide-y divide-[#e4ebf4]/60">
+                    <?php if (count($refusees) > 0): ?>
+                        <?php foreach ($refusees as $refus): 
+                            $name = htmlspecialchars($refus['nom'] . ' ' . $refus['prenom']);
+                            $dest = htmlspecialchars($refus['destination']);
+                            $motif = htmlspecialchars($refus['motif_mission']);
+                            $role = htmlspecialchars($refus['direction']);
+                            $service = "PARC AUTO";
+                            $direction = htmlspecialchars($refus['direction']);
+                            $date = htmlspecialchars($refus['date_depart']);
+                            
+                            $dateDepart = new DateTime($refus['date_depart']);
+                            $dateRetour = new DateTime($refus['date_retour']);
+                            $interval = $dateDepart->diff($dateRetour);
+                            $days = $interval->days > 0 ? $interval->days : 1;
+                            
+                            $initial = strtoupper(substr($refus['nom'], 0, 1));
+                            $id = $refus['id'];
+                            $uniqueId = 'refus-row-' . $id;
+                        ?>
+                        <tr id="<?= $uniqueId ?>" class="refuse-row row-animate hover:bg-slate-50/50" data-name="<?= $name ?>" data-dest="<?= $dest ?>" data-role="<?= $role ?>" data-motif="<?= $motif ?>" data-date="<?= $date ?>" data-days="<?= $days ?>" data-service="<?= $service ?>" data-direction="<?= $direction ?>" data-matricule="<?= htmlspecialchars($refus['matricule'] ?? '') ?>">
+                            <td class="py-4 px-6">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-emerald-50 text-[#10b981] flex items-center justify-center font-bold text-sm"><?= $initial ?></div>
+                                    <div>
+                                        <div class="text-sm font-medium text-[#001737]"><?= $name ?></div>
+                                        <div class="text-[11px] text-[#8799ae] tracking-wide uppercase"><?= $role ?></div>
+                                        <div class="text-[10px] text-[#8799ae] mt-1 uppercase">Service: <?= $service ?> &bull; Direction: <?= $direction ?></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-4 px-6">
+                                <div class="text-sm font-medium text-[#001737]"><?= $dest ?></div>
+                                <div class="text-xs text-[#8799ae]">"<?= $motif ?>"</div>
+                            </td>
+                            <td class="py-4 px-6">
+                                <div class="text-sm text-[#001737]"><?= $date ?></div>
+                                <div class="text-[11px] font-medium text-[#8799ae] uppercase"><?= $days ?> JOURS</div>
+                            </td>
+                            <td class="py-4 px-6">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-medium bg-rose-50 text-rose-600 border border-rose-200/30">
+                                    REFUSÉE
+                                </span>
+                            </td>
+                            <td class="py-4 px-6 text-center">
+                                <div class="flex items-center justify-center gap-3">
+                                    <button onclick="retablirRow('<?= $uniqueId ?>','<?= addslashes($name) ?>','<?= addslashes($dest) ?>','<?= addslashes($role) ?>','<?= addslashes($motif) ?>','<?= $date ?>','<?= $days ?>','<?= $service ?>','<?= $direction ?>','<?= htmlspecialchars($refus['matricule'] ?? '') ?>')"
+                                        class="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl text-base transform hover:scale-115 transition-all font-medium cursor-pointer" title="R&eacute;tablir la demande">&x021F2;</button>
+                                    <button onclick="deleteHistoriqueRow('<?= $uniqueId ?>')"
+                                        class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all font-medium cursor-pointer" title="Supprimer d&eacute;finitivement">&#128465;</button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr><td colspan="5" class="py-8 text-center text-[#8799ae]">Aucune demande refusée</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB HISTORIQUE (Approuvées) -->
     <div id="tab-historique" class="hidden w-full bg-white rounded-3xl border border-[#e4ebf4] overflow-hidden shadow-sm transition-all">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
@@ -146,6 +238,77 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
                     </tr>
                 </thead>
                 <tbody id="historique-tbody" class="divide-y divide-[#e4ebf4]/60">
+                    <?php if (count($historique) > 0): ?>
+                        <?php foreach ($historique as $hist): 
+                            $name = htmlspecialchars($hist['nom'] . ' ' . $hist['prenom']);
+                            $dest = htmlspecialchars($hist['destination']);
+                            $motif = htmlspecialchars($hist['motif_mission']);
+                            $role = htmlspecialchars($hist['direction']);
+                            $service = "PARC AUTO";
+                            $direction = htmlspecialchars($hist['direction']);
+                            $date = htmlspecialchars($hist['date_depart']);
+                            
+                            $dateDepart = new DateTime($hist['date_depart']);
+                            $dateRetour = new DateTime($hist['date_retour']);
+                            $interval = $dateDepart->diff($dateRetour);
+                            $days = $interval->days > 0 ? $interval->days : 1;
+                            
+                            $initial = strtoupper(substr($hist['nom'], 0, 1));
+                            $id = $hist['id'];
+                            $statut = $hist['statut'];
+                            $vehName = htmlspecialchars($hist['vehicle_name'] ?? 'Non affecté');
+                            $vehPlate = htmlspecialchars($hist['vehicle_plate'] ?? '');
+                            $uniqueId = 'hist-row-' . $id;
+                        ?>
+                        <tr id="<?= $uniqueId ?>" class="hist-row row-animate hover:bg-slate-50/50" data-name="<?= $name ?>" data-dest="<?= $dest ?>" data-role="<?= $role ?>" data-motif="<?= $motif ?>" data-date="<?= $date ?>" data-days="<?= $days ?>" data-service="<?= $service ?>" data-direction="<?= $direction ?>" data-matricule="<?= htmlspecialchars($hist['matricule'] ?? '') ?>" data-vehicle="<?= $vehName ?>" data-plate="<?= $vehPlate ?>">
+                            <td class="py-4 px-6">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-emerald-50 text-[#10b981] flex items-center justify-center font-bold text-sm"><?= $initial ?></div>
+                                    <div>
+                                        <div class="text-sm font-medium text-[#001737]"><?= $name ?></div>
+                                        <div class="text-[11px] text-[#8799ae] tracking-wide uppercase"><?= $role ?></div>
+                                        <div class="text-[10px] text-[#8799ae] mt-1 uppercase">Service: <?= $service ?> &bull; Direction: <?= $direction ?></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-4 px-6">
+                                <div class="text-sm font-medium text-[#001737]"><?= $dest ?></div>
+                                <div class="text-xs text-[#8799ae]">"<?= $motif ?>"</div>
+                            </td>
+                            <td class="py-4 px-6">
+                                <div class="text-sm text-[#001737]"><?= $date ?></div>
+                                <div class="text-[11px] font-medium text-[#8799ae] uppercase"><?= $days ?> JOURS</div>
+                            </td>
+                            <td class="py-4 px-6">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-medium bg-emerald-50 text-emerald-600 border border-emerald-200/30">
+                                    VALIDÉE
+                                </span>
+                            </td>
+                            <td class="py-4 px-6">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 text-xs">&rarr;</div>
+                                    <div>
+                                        <div class="text-xs font-medium text-[#001737]"><?= $vehName ?></div>
+                                        <div class="text-[10px] text-[#8799ae]"><?= $vehPlate ?></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-4 px-6">
+                                <a href="#" onclick="voirPdfHistorique('<?= $uniqueId ?>'); return false;" class="inline-flex items-center text-xs font-medium text-[#0066cc] hover:underline uppercase cursor-pointer">Voir PDF</a>
+                            </td>
+                            <td class="py-4 px-6 text-center">
+                                <div class="flex items-center justify-center gap-3">
+                                    <button onclick="retablirRow('<?= $uniqueId ?>','<?= addslashes($name) ?>','<?= addslashes($dest) ?>','<?= addslashes($role) ?>','<?= addslashes($motif) ?>','<?= $date ?>','<?= $days ?>','<?= $service ?>','<?= $direction ?>','<?= htmlspecialchars($hist['matricule'] ?? '') ?>')"
+                                        class="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl text-base transform hover:scale-115 transition-all font-medium cursor-pointer" title="R&eacute;tablir la demande">&x021F2;</button>
+                                    <button onclick="deleteHistoriqueRow('<?= $uniqueId ?>')"
+                                        class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all font-medium cursor-pointer" title="Supprimer d&eacute;finitivement">&#128465;</button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr><td colspan="7" class="py-8 text-center text-[#8799ae]">Aucune demande dans l'historique</td></tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -257,99 +420,8 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
     let selectedVehiclePlate = "";
 
     document.addEventListener("DOMContentLoaded", () => {
-        loadHistoriqueFromStorage();
         updateCounts();
     });
-
-    // ─── Persistance historique via localStorage ──────────────────────────────
-    const HIST_KEY = 'parc_historique_rows';
-
-    function saveHistoriqueToStorage() {
-        const rows = document.querySelectorAll('.hist-row');
-        const data = [];
-        rows.forEach(row => {
-            data.push({
-                id:        row.id,
-                name:      row.dataset.name      || '',
-                dest:      row.dataset.dest      || '',
-                role:      row.dataset.role      || '',
-                motif:     row.dataset.motif     || '',
-                date:      row.dataset.date      || '',
-                days:      row.dataset.days      || '1',
-                service:   row.dataset.service   || '',
-                direction: row.dataset.direction || '',
-                matricule: row.dataset.matricule || '',
-                vehicle:   row.dataset.vehicle   || '',
-                plate:     row.dataset.plate     || ''
-            });
-        });
-        localStorage.setItem(HIST_KEY, JSON.stringify(data));
-    }
-
-    function buildHistRowHtml(d) {
-        return `
-            <tr id="${d.id}" class="hist-row row-animate hover:bg-slate-50/50"
-                data-name="${d.name}" data-dest="${d.dest}" data-role="${d.role}"
-                data-motif="${d.motif}" data-date="${d.date}" data-days="${d.days}"
-                data-service="${d.service}" data-direction="${d.direction}"
-                data-matricule="${d.matricule}" data-vehicle="${d.vehicle}" data-plate="${d.plate}">
-                <td class="py-4 px-6">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-emerald-50 text-[#10b981] flex items-center justify-center font-bold text-sm">${d.name[0] || '?'}</div>
-                        <div>
-                            <div class="text-sm font-medium text-[#001737]">${d.name}</div>
-                            <div class="text-[11px] text-[#8799ae] tracking-wide uppercase">${d.role}</div>
-                            <div class="text-[10px] text-[#8799ae] mt-1 uppercase">Service: ${d.service} &bull; Direction: ${d.direction}</div>
-                        </div>
-                    </div>
-                </td>
-                <td class="py-4 px-6">
-                    <div class="text-sm font-medium text-[#001737]">${d.dest}</div>
-                    <div class="text-xs text-[#8799ae]">&quot;${d.motif}&quot;</div>
-                </td>
-                <td class="py-4 px-6">
-                    <div class="text-sm text-[#001737]">${d.date}</div>
-                    <div class="text-[11px] font-medium text-[#8799ae] uppercase">${d.days} JOURS</div>
-                </td>
-                <td class="py-4 px-6">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-medium bg-emerald-50 text-emerald-600 border border-emerald-200/30">
-                        VALID&Eacute;E
-                    </span>
-                </td>
-                <td class="py-4 px-6">
-                    <div class="flex items-center gap-3">
-                        <div class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 text-xs">&rarr;</div>
-                        <div>
-                            <div class="text-xs font-medium text-[#001737]">${d.vehicle}</div>
-                            <div class="text-[10px] text-[#8799ae]">${d.plate}</div>
-                        </div>
-                    </div>
-                </td>
-                <td class="py-4 px-6">
-                    <a href="#" onclick="voirPdfHistorique('${d.id}'); return false;" class="inline-flex items-center text-xs font-medium text-[#0066cc] hover:underline uppercase cursor-pointer">Voir PDF</a>
-                </td>
-                <td class="py-4 px-6 text-center">
-                    <div class="flex items-center justify-center gap-3">
-                        <button onclick="retablirRow('${d.id}','${d.name}','${d.dest}','${d.role}','${d.motif}','${d.date}','${d.days}','${d.service}','${d.direction}','${d.matricule}')"
-                            class="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl text-base transform hover:scale-115 transition-all font-medium cursor-pointer" title="R&eacute;tablir la demande">&x021F2;</button>
-                        <button onclick="deleteHistoriqueRow('${d.id}')"
-                            class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all font-medium cursor-pointer" title="Supprimer d&eacute;finitivement">&#128465;</button>
-                    </div>
-                </td>
-            </tr>`;
-    }
-
-    function loadHistoriqueFromStorage() {
-        const stored = localStorage.getItem(HIST_KEY);
-        if (!stored) return;
-        try {
-            const rows = JSON.parse(stored);
-            const tbody = document.getElementById('historique-tbody');
-            rows.forEach(d => {
-                tbody.insertAdjacentHTML('beforeend', buildHistRowHtml(d));
-            });
-        } catch(e) { console.warn('Historique storage error', e); }
-    }
 
     function openAffectationModal(collaborator, destination, rowId) {
         currentTargetRowId = rowId;
@@ -428,7 +500,7 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
             const result = await response.json();
 
             if (result.success) {
-                const uniqueId = 'hist-row-' + Date.now();
+                const uniqueId = 'hist-row-' + dbId;
                 const histTbody = document.getElementById('historique-tbody');
                 const newRowHtml = `
                     <tr id="${uniqueId}" class="hist-row row-animate row-fade-in hover:bg-slate-50/50" data-name="${name}" data-dest="${dest}" data-role="${role}" data-motif="${motif}" data-date="${date}" data-days="${days}" data-service="${service}" data-direction="${direction}" data-matricule="${matricule}" data-vehicle="${selectedVehicleName}" data-plate="${selectedVehiclePlate}">
@@ -477,8 +549,11 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
                         </td>
                     </tr>
                 `;
-                histTbody.insertAdjacentHTML('beforeend', newRowHtml);
-                saveHistoriqueToStorage();
+                // Remove 'Aucune demande' message if it exists
+                if (histTbody.querySelector('td[colspan]')) {
+                    histTbody.innerHTML = '';
+                }
+                histTbody.insertAdjacentHTML('afterbegin', newRowHtml);
 
                 originalRow.classList.add('row-fade-out');
                 setTimeout(() => {
@@ -503,36 +578,115 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
         }
     }
 
-    function refuseDemandeDirect(collaborator, destination, rowId) {
-        const row = document.getElementById(rowId);
-        if(row) {
-            row.classList.add('row-fade-out');
+    async function refuseDemandeDirect(collaborator, destination, rowId) {
+        const dbId = rowId.replace('row-demand-', '').replace('hist-row-', '').replace('refus-row-', '');
+        try {
+            await fetch('update_mission_status.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: dbId, statut: 'Refusée' })
+            });
+        } catch(e) {}
+
+        const originalRow = document.getElementById(rowId);
+        if (originalRow) {
+            const name = originalRow.dataset.name;
+            const dest = originalRow.dataset.dest;
+            const role = originalRow.dataset.role;
+            const motif = originalRow.dataset.motif;
+            const date = originalRow.dataset.date;
+            const days = originalRow.dataset.days;
+            const service = originalRow.dataset.service || 'PARC AUTO';
+            const direction = originalRow.dataset.direction || 'DIRECTION GÉNÉRALE';
+            const matricule = originalRow.dataset.matricule || '';
+
+            const uniqueId = 'refus-row-' + dbId;
+            const refusTbody = document.getElementById('refusees-tbody');
+            const newRowHtml = `
+                <tr id="${uniqueId}" class="refuse-row row-animate row-fade-in hover:bg-slate-50/50" data-name="${name}" data-dest="${dest}" data-role="${role}" data-motif="${motif}" data-date="${date}" data-days="${days}" data-service="${service}" data-direction="${direction}" data-matricule="${matricule}">
+                    <td class="py-4 px-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-emerald-50 text-[#10b981] flex items-center justify-center font-bold text-sm">${name[0]}</div>
+                            <div>
+                                <div class="text-sm font-medium text-[#001737]">${name}</div>
+                                <div class="text-[11px] text-[#8799ae] tracking-wide uppercase">${role}</div>
+                                <div class="text-[10px] text-[#8799ae] mt-1 uppercase">Service: ${service} • Direction: ${direction}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-4 px-6">
+                        <div class="text-sm font-medium text-[#001737]">${dest}</div>
+                        <div class="text-xs text-[#8799ae]">"${motif}"</div>
+                    </td>
+                    <td class="py-4 px-6">
+                        <div class="text-sm text-[#001737]">${date}</div>
+                        <div class="text-[11px] font-medium text-[#8799ae] uppercase">${days} JOURS</div>
+                    </td>
+                    <td class="py-4 px-6">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-medium bg-rose-50 text-rose-600 border border-rose-200/30">
+                            REFUSÉE
+                        </span>
+                    </td>
+                    <td class="py-4 px-6 text-center">
+                        <div class="flex items-center justify-center gap-3">
+                            <button onclick="retablirRow('${uniqueId}', '${name}', '${dest}', '${role}', '${motif}', '${date}', '${days}', '${service}', '${direction}', '${matricule}')" 
+                                class="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl text-base transform hover:scale-115 transition-all font-medium cursor-pointer" title="Rétablir la demande">⟲</button>
+                            <button onclick="deleteHistoriqueRow('${uniqueId}')" 
+                                class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all font-medium cursor-pointer" title="Supprimer définitivement">🗑</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            
+            if (refusTbody.querySelector('td[colspan]')) {
+                refusTbody.innerHTML = '';
+            }
+            refusTbody.insertAdjacentHTML('afterbegin', newRowHtml);
+
+            originalRow.classList.add('row-fade-out');
             setTimeout(() => {
-                row.remove();
+                originalRow.remove();
                 updateCounts();
                 showToast(`Demande de ${collaborator} refusée avec succès.`, "bg-rose-50 text-rose-600");
             }, 300);
         }
     }
 
-    function deleteHistoriqueRow(rowId) {
+    async function deleteHistoriqueRow(rowId) {
+        const dbId = rowId.replace('row-demand-', '').replace('hist-row-', '').replace('refus-row-', '');
+        try {
+            await fetch('update_mission_status.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: dbId, statut: 'Supprimée' })
+            });
+        } catch(e) {}
+
         const targetRow = document.getElementById(rowId);
         if (targetRow) {
             targetRow.classList.add('row-fade-out');
             setTimeout(() => {
                 targetRow.remove();
-                saveHistoriqueToStorage();
                 updateCounts();
                 showToast("Mission supprim\u00e9e d\u00e9finitivement.", "bg-slate-100 text-slate-600");
             }, 300);
         }
     }
 
-    function retablirRow(rowId, name, dest, role, motif, date, days, service = 'PARC AUTO', direction = 'DIRECTION GÉNÉRALE', matricule = '') {
+    async function retablirRow(rowId, name, dest, role, motif, date, days, service = 'PARC AUTO', direction = 'DIRECTION GÉNÉRALE', matricule = '') {
+        const dbId = rowId.replace('row-demand-', '').replace('hist-row-', '').replace('refus-row-', '');
+        try {
+            await fetch('update_mission_status.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: dbId, statut: 'En attente' })
+            });
+        } catch(e) {}
+
         const targetRow = document.getElementById(rowId);
         if (!targetRow) return;
 
-        const attenteId = 'row-demand-' + Date.now();
+        const attenteId = 'row-demand-' + dbId;
         const attenteTbody = document.getElementById('attente-tbody');
         
         const restoredHtml = `
@@ -572,7 +726,7 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
                 </td>
             </tr>
         `;
-        attenteTbody.insertAdjacentHTML('beforeend', restoredHtml);
+        attenteTbody.insertAdjacentHTML('afterbegin', restoredHtml);
 
         targetRow.classList.add('row-fade-out');
         setTimeout(() => {
@@ -602,9 +756,11 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
     function updateCounts() {
         const attenteRows = document.querySelectorAll('.attente-row').length;
         const fontRows = document.querySelectorAll('.hist-row').length;
+        const refusRows = document.querySelectorAll('.refuse-row').length;
         
         document.getElementById('badge-attente-top').textContent = attenteRows;
         document.getElementById('badge-historique-top').textContent = fontRows;
+        document.getElementById('badge-refusees-top').textContent = refusRows;
 
         generateCombinedOrdersUI();
         const combinesGroups = document.querySelectorAll('.combines-group-card').length;
@@ -613,12 +769,15 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
         const isHistoriqueActive = !document.getElementById('tab-historique').classList.contains('hidden');
+        const isRefuseesActive = !document.getElementById('tab-refusees').classList.contains('hidden');
         const isCombinesActive = !document.getElementById('tab-combines').classList.contains('hidden');
-        const activeCount = isHistoriqueActive ? fontRows : attenteRows;
         
-        // Mettre à jour le compteur en prenant en compte le filtre actuel
         let visibleCount = 0;
-        const rows = document.querySelectorAll(isHistoriqueActive ? '.hist-row' : '.attente-row');
+        let rows;
+        if (isHistoriqueActive) rows = document.querySelectorAll('.hist-row');
+        else if (isRefuseesActive) rows = document.querySelectorAll('.refuse-row');
+        else rows = document.querySelectorAll('.attente-row');
+
         rows.forEach(row => {
             if (row.style.display !== 'none') visibleCount++;
         });
@@ -629,7 +788,8 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
         document.getElementById('total-count').textContent = visibleCount;
 
         const activeContainer = isHistoriqueActive ? document.getElementById('tab-historique') : 
-                                (isCombinesActive ? document.getElementById('tab-combines') : document.getElementById('tab-attente'));
+                                (isRefuseesActive ? document.getElementById('tab-refusees') :
+                                (isCombinesActive ? document.getElementById('tab-combines') : document.getElementById('tab-attente')));
         const emptyState = document.getElementById('empty-state');
 
         if (visibleCount === 0) {
@@ -643,27 +803,33 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
 
     function switchTab(tab) {
         const btnAttente = document.getElementById('btn-tab-attente');
+        const btnRefusees = document.getElementById('btn-tab-refusees');
         const btnHistorique = document.getElementById('btn-tab-historique');
         const btnCombines = document.getElementById('btn-tab-combines');
         
         document.getElementById('tab-attente').classList.add('hidden');
+        document.getElementById('tab-refusees').classList.add('hidden');
         document.getElementById('tab-historique').classList.add('hidden');
         document.getElementById('tab-combines').classList.add('hidden');
         document.getElementById('search-input').value = '';
 
         // Reset display of all rows on tab switch
-        document.querySelectorAll('.attente-row, .hist-row').forEach(row => row.style.display = '');
+        document.querySelectorAll('.attente-row, .hist-row, .refuse-row').forEach(row => row.style.display = '');
 
         const defaultClass = "tab-btn text-[#8799ae] hover:text-[#001737] font-medium text-xs tracking-wide px-5 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer";
         const activeClass = "tab-btn bg-white text-[#001737] font-medium text-xs tracking-wide px-5 py-2 rounded-xl shadow-sm border border-[#e4ebf4]/60 flex items-center gap-2 transition-all cursor-pointer";
 
         btnAttente.className = defaultClass;
+        btnRefusees.className = defaultClass;
         btnHistorique.className = defaultClass;
         if(btnCombines) btnCombines.className = defaultClass;
 
         if (tab === 'attente') {
             btnAttente.className = activeClass;
             document.getElementById('tab-attente').classList.remove('hidden');
+        } else if (tab === 'refusees') {
+            btnRefusees.className = activeClass;
+            document.getElementById('tab-refusees').classList.remove('hidden');
         } else if (tab === 'historique') {
             btnHistorique.className = activeClass;
             document.getElementById('tab-historique').classList.remove('hidden');
@@ -677,7 +843,10 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
     function filterTable() {
         const q = document.getElementById('search-input').value.toLowerCase();
         const isHist = !document.getElementById('tab-historique').classList.contains('hidden');
-        const rows = document.querySelectorAll(isHist ? '.hist-row' : '.attente-row');
+        const isRefus = !document.getElementById('tab-refusees').classList.contains('hidden');
+        let rows = document.querySelectorAll('.attente-row');
+        if (isHist) rows = document.querySelectorAll('.hist-row');
+        if (isRefus) rows = document.querySelectorAll('.refuse-row');
 
         rows.forEach(row => {
             const text = (row.dataset.name + ' ' + row.dataset.dest).toLowerCase();
@@ -788,6 +957,7 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
         const missions = globalGroupedOrders[date];
         if (!missions || missions.length === 0) return null;
         try {
+            const isCombined = missions.length > 1;
             return await buildSinglePdfBlob({
                 name:      missions[0].name,
                 matricule: missions[0].matricule,
@@ -800,18 +970,18 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
                 plate:     missions[0].plate,
                 days:      missions[0].days,
                 date:      date
-            });
+            }, isCombined);
         } catch (e) {
             console.error(e);
-            alert("Erreur lors de la g\u00e9n\u00e9ration du PDF.");
+            alert("Erreur lors de la génération du PDF.");
             return null;
         }
     }
 
     // ─── buildSinglePdfBlob : remplit le template PDF original ───────────────
-    async function buildSinglePdfBlob(rowData) {
+    async function buildSinglePdfBlob(rowData, isCombined = false) {
         try {
-            const url = 'Demande ordre mission conbiné.pdf';
+            const url = isCombined ? 'Demande ordre mission conbiné.pdf' : 'Demande ordre mission .pdf';
             const res = await fetch(url);
             if(!res.ok) throw new Error("Erreur chargement PDF");
             const existingPdfBytes = await res.arrayBuffer();
@@ -826,26 +996,31 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
             const textColor = PDFLib.rgb(0, 0, 0);
             const font = await finalPdf.embedFont(PDFLib.StandardFonts.Helvetica);
 
-            const P1_NOM_X = 200;        const P1_NOM_Y = 725;
-            const P1_PRENOM_X = 367;     const P1_PRENOM_Y = 725;
-            const P1_MATRIC_X = 180;     const P1_MATRIC_Y = 687;
-            const P1_FONCT_X = 328;      const P1_FONCT_Y = 687;
-            const P1_SERVICE_X = 180;    const P1_SERVICE_Y = 650;
-            const P1_DIRECT_X = 180;     const P1_DIRECT_Y = 613;
-            const P1_ACCOMP_X = 180;     const P1_ACCOMP_Y = 577;
-            const P1_TRANS_X = 225;      const P1_TRANS_Y = 541;
-            const P1_VEHIC_X = 225;      const P1_VEHIC_Y = 505;
-            const P1_LIEU_X = 225;       const P1_LIEU_Y = 468;
-            const P1_OBJET_X = 180;      const P1_OBJET_Y = 434;
-            const P1_DATE_D_X = 245;     const P1_DATE_D_Y = 399;
-            const P1_DATE_R_X = 245;     const P1_DATE_R_Y = 363;
+            // Coordonnées ajustées pour que le texte tombe bien sur la ligne.
+            // (L'axe Y commence de 0 en bas de la page et monte vers le haut).
+            const yOffset = -2; // Ajustement global vertical
+            const xOffset = 5;  // Ajustement global horizontal
+
+            const P1_NOM_X = 200 + xOffset;        const P1_NOM_Y = 725 + yOffset;
+            const P1_PRENOM_X = 367 + xOffset;     const P1_PRENOM_Y = 725 + yOffset;
+            const P1_MATRIC_X = 180 + xOffset;     const P1_MATRIC_Y = 687 + yOffset;
+            const P1_FONCT_X = 328 + xOffset;      const P1_FONCT_Y = 687 + yOffset;
+            const P1_SERVICE_X = 180 + xOffset;    const P1_SERVICE_Y = 650 + yOffset;
+            const P1_DIRECT_X = 180 + xOffset;     const P1_DIRECT_Y = 613 + yOffset;
+            const P1_ACCOMP_X = 180 + xOffset;     const P1_ACCOMP_Y = 577 + yOffset;
+            const P1_TRANS_X = 225 + xOffset;      const P1_TRANS_Y = 541 + yOffset;
+            const P1_VEHIC_X = 225 + xOffset;      const P1_VEHIC_Y = 505 + yOffset;
+            const P1_LIEU_X = 225 + xOffset;       const P1_LIEU_Y = 468 + yOffset;
+            const P1_OBJET_X = 180 + xOffset;      const P1_OBJET_Y = 434 + yOffset;
+            const P1_DATE_D_X = 245 + xOffset;     const P1_DATE_D_Y = 399 + yOffset;
+            const P1_DATE_R_X = 245 + xOffset;     const P1_DATE_R_Y = 363 + yOffset;
 
             const writeField = (page, text, x, y) => {
                 page.drawText(text || '', { x, y, size: fontSize, font, color: textColor });
             };
 
-            const nameParts = rowData.name.trim().split(' ');
-            const nom = nameParts.length > 1 ? nameParts.slice(-1)[0].toUpperCase() : rowData.name.toUpperCase();
+            const nameParts = (rowData.name || '').trim().split(' ');
+            const nom = nameParts.length > 1 ? nameParts.slice(-1)[0].toUpperCase() : (rowData.name || '').toUpperCase();
             const prenom = nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : '';
             const matriculeVal = rowData.matricule || ("M" + String(Math.floor(Math.random() * 10000)).padStart(4, '0'));
 
@@ -896,7 +1071,7 @@ $demandes = $demandesStmt->fetchAll(PDO::FETCH_ASSOC);
             vehicle: row.dataset.vehicle || '',
             plate: row.dataset.plate || ''
         };
-        const blobUrl = await buildSinglePdfBlob(rowData);
+        const blobUrl = await buildSinglePdfBlob(rowData, false); // toujours PDF individuel
         if (blobUrl) {
             currentPdfBlobUrl = blobUrl;
             document.getElementById('pdf-preview-iframe').src = blobUrl;

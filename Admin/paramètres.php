@@ -276,10 +276,14 @@ include 'includes/layout.php';
                 <!-- Profile Photo -->
                 <div class="relative mb-5">
                     <div class="w-[120px] h-[120px] rounded-full overflow-hidden border-4 border-blue-50 shadow-lg">
-                        <img id="profile-photo" src="https://ui-avatars.com/api/?name=<?= urlencode($userName) ?>&background=e2e8f0&color=475569&size=200" alt="Photo de profil" class="w-full h-full object-cover">
+                        <?php if(!empty($user['profile_photo'])): ?>
+                            <img id="profile-photo" src="<?php echo htmlspecialchars($user['profile_photo']); ?>" alt="Photo de profil" class="w-full h-full object-cover">
+                        <?php else: ?>
+                            <img id="profile-photo" src="https://ui-avatars.com/api/?name=<?= urlencode($userName) ?>&background=e2e8f0&color=475569&size=200" alt="Photo de profil" class="w-full h-full object-cover">
+                        <?php endif; ?>
                     </div>
                     <label class="photo-upload-btn" title="Changer la photo">
-                        <input type="file" accept="image/*" onchange="previewPhoto(event)" class="hidden">
+                        <input type="file" accept="image/*" onchange="uploadProfilePhoto(this)" class="hidden">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
                     </label>
                 </div>
@@ -473,32 +477,6 @@ include 'includes/layout.php';
         if (savedNotif !== null) document.getElementById('toggle-notifications').checked = (savedNotif === 'true');
     });
 
-    // Preview photo
-    function previewPhoto(event) {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('profile-photo').src = e.target.result;
-                
-                // Mettre à jour l'avatar dans le header (layout)
-                const headerAvatar = document.getElementById('header-avatar-img');
-                if (headerAvatar) {
-                    headerAvatar.src = e.target.result;
-                }
-                
-                // Mettre à jour l'image dans le dropdown (remplacer l'initiale par l'image)
-                const dropdownInitialBox = document.getElementById('dropdown-user-initial');
-                if (dropdownInitialBox) {
-                    dropdownInitialBox.innerHTML = '<img src="' + e.target.result + '" alt="Avatar" class="w-full h-full object-cover">';
-                }
-                
-                showSettingsToast('Photo de profil mise à jour !');
-            };
-            reader.readAsDataURL(file);
-        }
-    }
-
     // Update name dynamically
     function updateName(newName) {
         document.getElementById('display-name').textContent = newName || ' ';
@@ -525,9 +503,6 @@ include 'includes/layout.php';
         const archive = document.getElementById('toggle-archive').checked;
         const notif = document.getElementById('toggle-notifications').checked;
 
-        if (photoSrc.startsWith('data:')) {
-            localStorage.setItem('profile_photo', photoSrc);
-        }
         localStorage.setItem('profile_name', name);
         localStorage.setItem('profile_email', email);
         localStorage.setItem('profile_phone', phone);

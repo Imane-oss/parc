@@ -4,14 +4,17 @@ include 'includes/layout.php';
 
 if (isset($pdo)) {
     $totalVehicules   = (int) $pdo->query("SELECT COUNT(*) FROM vehicles")->fetchColumn();
-    $totalDemandes    = (int) $pdo->query("SELECT COUNT(*) FROM vehicles WHERE statut = 'disponible'")->fetchColumn();
+    $totalDemandes    = (int) $pdo->query("SELECT COUNT(*) FROM demandes_mission WHERE statut = 'En attente' OR statut IS NULL")->fetchColumn();
     $totalMissions    = (int) $pdo->query("SELECT COUNT(*) FROM vehicles WHERE statut = 'en mission'")->fetchColumn();
     $totalMaintenance = (int) $pdo->query("SELECT COUNT(*) FROM vehicles WHERE statut = 'en maintenance'")->fetchColumn();
+    // Flux de demandes (5 dernières)
+    $fluxDemandes = $pdo->query("SELECT * FROM demandes_mission ORDER BY created_at DESC LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
 } else {
     $totalVehicules   = 0;
     $totalDemandes    = 0;
     $totalMissions    = 0;
     $totalMaintenance = 0;
+    $fluxDemandes = [];
 }
 ?>
 
@@ -115,24 +118,37 @@ if (isset($pdo)) {
                             <a href="demandes.php" class="text-xs font-bold text-[#0066cc] hover:text-[#0052a3]">VOIR TOUTES</a>
                         </div>
                         
-                        <div class="space-y-3">
-                            <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                        <div class="space-y-3" id="flux-container">
+                            <?php if (empty($fluxDemandes)): ?>
+                            <div class="text-center py-8 text-slate-400 text-sm">Aucune demande en cours</div>
+                            <?php else: ?>
+                            <?php foreach ($fluxDemandes as $d): ?>
+                            <?php
+                                $initial = strtoupper(mb_substr($d['nom'], 0, 1));
+                                $fullName = htmlspecialchars($d['nom'] . ' ' . $d['prenom']);
+                                $dest = htmlspecialchars($d['destination']);
+                                $statut = $d['statut'] ?? 'En attente';
+                                $date = date('d/m/Y', strtotime($d['created_at']));
+                                $isPending = ($statut === 'En attente' || $statut === null || $statut === '');
+                            ?>
+                            <a href="demandes.php" class="flex items-center justify-between p-3 rounded-2xl bg-slate-50/50 hover:bg-slate-50 transition-colors">
                                 <div class="flex items-center gap-4">
-                                    <div class="h-10 w-10 rounded-full border border-slate-200 bg-white flex items-center justify-center text-sm font-bold text-slate-700">A</div>
+                                    <div class="h-10 w-10 rounded-full border border-slate-200 bg-white flex items-center justify-center text-sm font-bold text-slate-700"><?= $initial ?></div>
                                     <div>
-                                        <h4 class="text-sm font-bold text-slate-900">Ahmed Alami</h4>
-                                        <p class="text-xs font-medium text-slate-400">Casablanca - Centre • 2024-05-24</p>
+                                        <h4 class="text-sm font-bold text-slate-900"><?= $fullName ?></h4>
+                                        <p class="text-xs font-medium text-slate-400"><?= $dest ?> • <?= $date ?></p>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <button class="flex h-8 w-8 items-center justify-center rounded-xl bg-[#0066cc] text-white hover:bg-[#0052a3] transition-colors shadow-md shadow-blue-500/20">
-                                        <i data-lucide="check" class="h-4 w-4"></i>
-                                    </button>
-                                    <button class="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 hover:text-rose-500 hover:border-rose-200 hover:bg-rose-50 transition-colors">
-                                        <i data-lucide="x" class="h-4 w-4"></i>
-                                    </button>
+                                    <?php if ($isPending): ?>
+                                    <span class="px-2.5 py-1 rounded-xl text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-200/40">EN ATTENTE</span>
+                                    <?php else: ?>
+                                    <span class="px-2.5 py-1 rounded-xl text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200/30">VALIDÉE</span>
+                                    <?php endif; ?>
                                 </div>
-                            </div>
+                            </a>
+                            <?php endforeach; ?>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

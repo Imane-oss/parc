@@ -61,33 +61,16 @@ try {
     // 3. Generate PDF
     $pdfPath = PdfGenerator::generateMissionPdf($pdfData);
 
-    // 4. Send Email
-    $requesterEmail = $mission['email'] ?? null; // Make sure you have 'email' in your demandes_mission table
-    $userName = $mission['nom'] . ' ' . $mission['prenom'];
+    // 4. Update DB Status
+    $updateStmt = $pdo->prepare("UPDATE demandes_mission SET statut = 'Approuvée', vehicle_name = ?, vehicle_plate = ? WHERE id = ?");
+    $updateStmt->execute([$vehicleName, $vehiclePlate, $missionId]);
 
-    $emailStatus = 'Skipped: No email address found in database for this user.';
-    if ($requesterEmail) {
-        try {
-            $emailResult = EmailSender::sendMissionAcceptedEmail($requesterEmail, $userName, $pdfPath);
-            $emailStatus = 'Sent successfully to ' . $requesterEmail;
-        } catch (Exception $e) {
-            $emailStatus = 'Failed to send: ' . $e->getMessage();
-        }
-    }
-
-    // 5. Update DB Status
-    // Your table does not currently have a 'statut' column, 
-    // the history is handled via client-side localStorage.
-    // If you add one in the future, uncomment this:
-    // $updateStmt = $pdo->prepare("UPDATE demandes_mission SET statut = 'validee' WHERE id = ?");
-    // $updateStmt->execute([$missionId]);
-
-    // 6. Cleanup Temporary PDF
+    // 5. Cleanup Temporary PDF
     if (file_exists($pdfPath)) {
         unlink($pdfPath);
     }
 
-    echo json_encode(['success' => true, 'message' => 'Mission accepted. Email Status: ' . $emailStatus]);
+    echo json_encode(['success' => true, 'message' => 'Mission accepted. User interface updated.']);
 
 } catch (Exception $e) {
     error_log("Error in accept_mission.php: " . $e->getMessage());

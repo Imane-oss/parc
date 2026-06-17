@@ -34,8 +34,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST)) {
     } else {
         try {
             // Insérer les données selon le schéma actuel de la table demandes_mission
-            $sql = "INSERT INTO demandes_mission (nom, prenom, matricule, direction, ville_depart, destination, date_depart, date_retour, motif_mission, created_at) 
-                    VALUES (:nom, :prenom, :matricule, :direction, :ville_depart, :destination, :date_depart, :date_retour, :motif_mission, NOW())";
+            $sql = "INSERT INTO demandes_mission (nom, prenom, matricule, direction, email, ville_depart, destination, date_depart, date_retour, motif_mission, created_at) 
+                    VALUES (:nom, :prenom, :matricule, :direction, :email, :ville_depart, :destination, :date_depart, :date_retour, :motif_mission, NOW())";
             
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
@@ -43,6 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST)) {
                 ':prenom' => $prenom,
                 ':matricule' => $matricule,
                 ':direction' => $direction,
+                ':email' => $email,
                 ':ville_depart' => $ville_depart,
                 ':destination' => $destination,
                 ':date_depart' => $date_depart,
