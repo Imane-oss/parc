@@ -25,9 +25,13 @@ if ($hasStatutColumn) {
 
     $stmtAttente = $pdo->query("SELECT COUNT(*) FROM demandes_mission WHERE statut = 'En attente' OR statut IS NULL");
     $totalAttente = $stmtAttente->fetchColumn();
+
+    $stmtRefusee = $pdo->query("SELECT COUNT(*) FROM demandes_mission WHERE statut = 'Refusée'");
+    $totalRefusee = $stmtRefusee->fetchColumn();
 } else {
     $totalApprouve = 0;
     $totalAttente = count($demandes);
+    $totalRefusee = 0;
 }
 ?>
 <!DOCTYPE html>
@@ -196,6 +200,77 @@ if ($hasStatutColumn) {
             color: #f59e0b;
             border: 1px solid #fef3c7;
         }
+        .status-refusee {
+            background-color: #fef2f2;
+            color: #ef4444;
+            border: 1px solid #fecaca;
+        }
+
+        /* Search bar */
+        .search-container {
+            position: relative;
+            max-width: 420px;
+            width: 100%;
+        }
+        .search-container i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 14px;
+            pointer-events: none;
+            transition: color 0.2s;
+        }
+        .search-container input {
+            width: 100%;
+            padding: 12px 16px 12px 44px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            color: var(--text-dark);
+            background: #ffffff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        .search-container input:focus {
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.1);
+        }
+        .search-container input:focus + i,
+        .search-container input:focus ~ i {
+            color: var(--primary-blue);
+        }
+        .search-container input::placeholder {
+            color: #94a3b8;
+            font-weight: 400;
+        }
+        .search-results-info {
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 500;
+            margin-top: 8px;
+            display: none;
+        }
+        .search-results-info span {
+            font-weight: 700;
+            color: var(--primary-blue);
+        }
+        .no-results-row td {
+            text-align: center;
+            padding: 40px 20px !important;
+            color: #94a3b8;
+        }
+        .no-results-row i {
+            font-size: 2rem;
+            margin-bottom: 8px;
+            display: block;
+        }
+        tr.highlight-row {
+            background-color: #eff6ff !important;
+        }
     </style>
 </head>
 <body>
@@ -235,7 +310,7 @@ if ($hasStatutColumn) {
         </div>
 
         <div class="row mb-4">
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="card-stats">
                     <div class="stat-icon" style="background-color: #ecfdf5; color: #10b981;">
                         <i class="fa-solid fa-check-circle"></i>
@@ -246,7 +321,7 @@ if ($hasStatutColumn) {
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="card-stats">
                     <div class="stat-icon" style="background-color: #fffbeb; color: #f59e0b;">
                         <i class="fa-solid fa-clock"></i>
@@ -256,6 +331,28 @@ if ($hasStatutColumn) {
                         <span class="text-muted small uppercase">Demandes en Attente</span>
                     </div>
                 </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card-stats">
+                    <div class="stat-icon" style="background-color: #fef2f2; color: #ef4444;">
+                        <i class="fa-solid fa-times-circle"></i>
+                    </div>
+                    <div>
+                        <h4 class="m-0 fw-bold"><?= $totalRefusee ?></h4>
+                        <span class="text-muted small uppercase">Demandes Refusées</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Rechercher par destination ou ville..." autocomplete="off">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </div>
+            <div class="search-results-info" id="searchInfo">
+                <span id="resultCount">0</span> résultat(s) trouvé(s)
             </div>
         </div>
 
@@ -292,9 +389,16 @@ if ($hasStatutColumn) {
                                         Au <strong><?= date('d/m/Y', strtotime($demande['date_retour'])) ?></strong>
                                     </td>
                                     <td class="py-3 px-4">
-                                        <?php if (($demande['statut'] ?? '') === 'Approuvée'): ?>
+                                        <?php 
+                                            $statut = $demande['statut'] ?? '';
+                                            if ($statut === 'Approuvée'): 
+                                        ?>
                                             <span class="badge-status status-approuvee">
                                                 <i class="fa-solid fa-check"></i> Votre demande a été acceptée
+                                            </span>
+                                        <?php elseif ($statut === 'Refusée'): ?>
+                                            <span class="badge-status status-refusee">
+                                                <i class="fa-solid fa-xmark"></i> Votre demande a été refusée
                                             </span>
                                         <?php else: ?>
                                             <span class="badge-status status-attente">
@@ -320,5 +424,66 @@ if ($hasStatutColumn) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const searchInfo = document.getElementById('searchInfo');
+            const resultCount = document.getElementById('resultCount');
+            const tableBody = document.querySelector('.table-card tbody');
+            const rows = tableBody.querySelectorAll('tr:not(.no-results-row)');
+
+            // Remove any existing no-results row on load
+            const existingNoResults = tableBody.querySelector('.no-results-row');
+            if (existingNoResults) existingNoResults.remove();
+
+            searchInput.addEventListener('input', function() {
+                const query = this.value.trim().toLowerCase();
+                let visibleCount = 0;
+
+                // Remove previous no-results row
+                const noRes = tableBody.querySelector('.no-results-row');
+                if (noRes) noRes.remove();
+
+                if (query === '') {
+                    // Show all rows
+                    rows.forEach(function(row) {
+                        row.style.display = '';
+                        row.classList.remove('highlight-row');
+                    });
+                    searchInfo.style.display = 'none';
+                    return;
+                }
+
+                rows.forEach(function(row) {
+                    // Get destination cell (3rd column, index 2)
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length < 3) return;
+
+                    const destinationText = cells[2].textContent.toLowerCase();
+
+                    if (destinationText.includes(query)) {
+                        row.style.display = '';
+                        row.classList.add('highlight-row');
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                        row.classList.remove('highlight-row');
+                    }
+                });
+
+                // Show result count
+                resultCount.textContent = visibleCount;
+                searchInfo.style.display = 'block';
+
+                // Show no results message
+                if (visibleCount === 0) {
+                    const noResultsRow = document.createElement('tr');
+                    noResultsRow.className = 'no-results-row';
+                    noResultsRow.innerHTML = '<td colspan="5"><i class="fa-solid fa-search"></i>Aucune demande trouvée pour "' + searchInput.value.trim() + '"</td>';
+                    tableBody.appendChild(noResultsRow);
+                }
+            });
+        });
+    </script>
 </body>
 </html>

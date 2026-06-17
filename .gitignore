@@ -1,0 +1,13 @@
+# PHP dependencies
+Admin/vendor/
+
+# Temporary files
+Admin/tmp/
+
+# IDE files
+.idea/
+.vscode/
+
+# OS files
+Thumbs.db
+Desktop.ini

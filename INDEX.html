@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRM Béni Mellal - Khénifra | Gestion des Missions</title>
+    
+<form action="traitement.php" method="POST">
+
+</form>
+    
+    <style>
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body, html {
+            height: 100%;
+            background-color: #f4f6f9;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        
+        .hero {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            
+            background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
+                        url('entreprise.jpeg') no-repeat center center/cover;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 50px;
+            background: rgb(255, 255, 255);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        
+        .logo-container img {
+            height: 65px;
+            object-fit: contain;
+        }
+
+        .brand-text {
+            font-size: 13pt;
+            font-weight: bold;
+            color: #0056b3; 
+            line-height: 1.3;
+        }
+
+        .brand-text span {
+            color: #e67e22; 
+            font-size: 11pt;
+        }
+
+        
+        .auth-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-size: 10.5pt;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .btn-login {
+            background: transparent;
+            color: #0056b3;
+            border: 2px solid #0056b3;
+        }
+
+        .btn-login:hover {
+            background: #0056b3;
+            color: white;
+        }
+
+        .btn-register {
+            background: #e67e22;
+            color: white;
+            border: 2px solid #e67e22;
+            box-shadow: 0 4px 10px rgba(230, 126, 34, 0.3);
+        }
+
+        .btn-register:hover {
+            background: #d35400;
+            border-color: #d35400;
+            transform: translateY(-2px);
+        }
+
+        
+        .hero-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            padding: 0 20px;
+            margin-top: 190px;
+        }
+
+        .hero-content h1 {
+            font-size: 32pt;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
+        }
+
+        .hero-content p {
+            font-size: 14pt;
+            max-width: 750px;
+            margin-bottom: 30px;
+            text-shadow: 1px 1px 5px rgba(0,0,0,0.6);
+            font-weight: 300;
+        }
+
+        .cta-main {
+            background: #00a8ff;
+            color: white;
+            padding: 15px 40px;
+            font-size: 12pt;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 168, 255, 0.4);
+            transition: 0.3s ease;
+        }
+
+        .cta-main:hover {
+            background: #0097e6;
+            transform: scale(1.05);
+            }
+        
+body {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #F8FAFC; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+
+.cards-container {
+    margin-top: 250px;
+    display: flex;
+    gap: 30px; 
+    max-width: 1100px;
+    padding: 20px;
+     
+    justify-content: center;
+    margin-left:100px
+}
+
+
+.card {
+    background-color: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 24px; 
+    padding: 35px 25px;
+    width: 260px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; 
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+    transition: all 0.3s ease; 
+}
+
+.card:hover {
+    transform: translateY(-5px); 
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
+    border-color: #CBD5E1;
+}
+
+
+.icon-wrapper {
+    background-color: #EFF6FF; 
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    margin-bottom: 25px;
+}
+
+
+.card h3 {
+    color: #0F172A; 
+    font-size: 19px;
+    font-weight: 700;
+    margin: 0 0 15px 0;
+    line-height: 1.3;
+}
+
+
+.card p {
+    color: #64748B;
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+}
+.ttr{
+    color: #001b5a;
+    text-align: center;
+    
+}
+
+        
+  .srm-footer {
+    width: 100%;
+    max-width: 1200px;
+    margin: 40px auto 10px auto;
+    padding: 0 20px;
+    font-family: 'Arial', sans-serif;
+    color: #334155;
+    font-size: 11px; 
+}
+
+
+.footer-divider {
+    height: 1.5px;
+    background-color: #475569;
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+
+.footer-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.company-fr {
+    text-align: left;
+    width: 45%;
+}
+
+.company-ar {
+    text-align: right;
+    width: 45%;
+    font-family: 'Amiri', 'Traditional Arabic', Tahoma, sans-serif;
+    font-size: 12px;
+}
+
+.company-fr strong, .company-ar strong {
+    font-size: 12px;
+    color: #1e293b;
+}
+
+.company-fr p, .company-ar p {
+    margin: 4px 0 0 0;
+    color: #64748b;
+}
+
+
+.location-icon {
+    width: 10%;
+    text-align: center;
+    font-size: 16px;
+    padding-top: 5px;
+}
+
+
+.footer-tax, .footer-contact {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 8px;
+    color: #475569;
+}
+
+.footer-tax span, .footer-contact span {
+    display: inline-flex;
+    align-items: center;
+}
+
+.footer-contact a {
+    color: #475569;
+    text-decoration: none;
+    margin-left: 3px;
+}
+
+.footer-contact a:hover {
+    text-decoration: underline;
+    color: #0284c7;
+}  
+ </style>
+</head>
+<body>
+
+    <div class="hero">
+        <header>
+            <div class="logo-container">
+                <img src="srm pic.png" alt="Logo SRM Béni Mellal Khénifra">
+                <div class="brand-text">
+                    Société Régionale Multiservices<br>
+                    <span>Béni Mellal - Khénifra S.A</span>
+                </div>
+            </div>
+            
+            <div class="auth-buttons">
+                <a href="CONNEXION.html" class="btn btn-login" onclick="openModal('login')">Se connecter</a>
+                <a href="inscription.html" class="btn btn-register" onclick="openModal('register')">S'inscrire</a>
+            </div>
+        </header>
+
+        <div class="hero-content">
+            <h1>PARC AUTOMOBILE </h1>
+            <br>
+            <br>
+           <strong><p>Plateforme interne de la Direction Provinciale de Khénifra. Planifiez vos ordres de mission, suivez vos déplacements et gérez vos frais en quelques clics.</p></strong>
+            <button class="cta-main" onclick="openModal('login')">Accéder à mon espace mission</button>
+        </div>
+        <br>
+        <br>
+        <br>
+        <br>
+        <br>
+        <br>
+        <br>
+    
+        
+
+        
+
+    <div class="cards-container">
+        <h2 class="ttr"> <strong> <u> Une gestion simplifiée à chaque étape :</h2></strong></u>
+        
+        <div class="card">
+            <div class="icon-wrapper">
+                <span>📅</span> 
+            </div>
+            <h3>demande de mission </h3>
+            <p>demandez votre mission en quelques clics grâce à notre interface intuitive et optimisée.</p>
+        </div>
+
+        <div class="card">
+            <div class="icon-wrapper">
+                <span>🛡️</span>
+            </div>
+            <h3>Validation par administrateur</h3>
+            <p>Système de validation sécurisé pour garantir la conformité de chaque mission professionnelle.</p>
+        </div>
+
+        <div class="card">
+            <div class="icon-wrapper">
+                <span>📄</span>
+            </div>
+            <h3>Génération automatique PDF</h3>
+            <p>Générez instantanément vos ordres de mission et documents nécessaires en format PDF.</p>
+        </div>
+
+    </div>
+
+
+
+
+    
+<footer class="srm-footer">
+    <div class="footer-divider"></div>
+
+    <div class="footer-top">
+        <div class="company-fr">
+            <strong th:text="${companyNameFr}">Société Régionale Multiservices Béni Mellal - Khénifra S.A</strong>
+            <p th:text="${addressFr}">Siège Social: Bd Omar Ibn Al Khattab - B.P. 174, Béni Mellal</p>
+        </div>
+        
+        <div class="location-icon">
+            <span class="pin">📍</span> </div>
+
+        <div class="company-ar" dir="rtl">
+            <strong th:text="${companyNameAr}">الشركة الجهوية متعددة الخدمات بني ملال - خنيفرة ش.م</strong>
+            <p th:text="${addressAr}">المقر الرئيسي: شارع عمر بن الخطاب - ص.ب: 174، بني ملال</p>
+        </div>
+    </div>
+
+    <div class="footer-tax">
+        <span>ICE : <strong th:text="${ice}">003659660000073</strong></span>
+        <span>IF : <strong th:text="${ifNum}">66996362</strong></span>
+        <span>RC : <strong th:text="${rc}">16677</strong></span>
+        <span>TP : <strong th:text="${tp}">41904094</strong></span>
+    </div>
+
+    <div class="footer-contact">
+        <span>📞 C.R.C. <strong th:text="${phone}">05 23 48 32 07</strong></span>
+        <span>📠 F.A.X. <strong th:text="${fax}">05 23 48 33 87</strong></span>
+        <span>✉️ <a th:href="'mailto:' + ${email}" th:text="${email}">contact@srm-bk.ma</a></span>
+        <span>🌐 <a th:href="'https://' + ${website}" th:text="${website}" target="_blank">www.srm-bk.ma</a></span>
+    </div>
+</footer>
+
+
+
+    <script>
+        const modal = document.getElementById('authModal');
+        const loginSection = document.getElementById('loginFormSection');
+        const registerSection = document.getElementById('registerFormSection');
+
+        
+        function openModal(type) {
+            modal.style.display = 'flex';
+            switchForm(type);
+        }
+
+        
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        
+        function switchForm(type) {
+            if (type === 'login') {
+                loginSection.style.display = 'block';
+                registerSection.style.display = 'none';
+            } else {
+                loginSection.style.display = 'none';
+                registerSection.style.display = 'block';
+            }
+        }
+
+    
+        window.onclick = function(event) {
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        
+        function handleAuth(event, type) {
+            event.preventDefault(); 
+            
+            if (type === 'login') {
+                const email = document.getElementById('login-email').value;
+                alert('Connexion réussie pour : ' + email + '\\nRedirection vers votre espace mission SRM...');
+            } else {
+                const name = document.getElementById('reg-name').value;
+                alert('Compte créé avec succès pour ' + name + ' ! Attente de validation par l'administrateur SRM.');
+                 }
+            closeModal();
+        }
+    </script>
+</body>
+</html>

@@ -129,7 +129,7 @@ function isActive(string $page, string $activePage): bool
         <div class="h-20 flex items-center px-6">
             <a href="dashboard.php" class="flex items-center gap-3">
                 <div class="flex items-center justify-center rounded-lg overflow-hidden flex-shrink-0" style="width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important;">
-                    <img src="/parc_auto/logo.png" alt="Logo" style="width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; display: block !important; object-fit: contain !important;">
+                    <img src="/parcauto/logo.png" alt="Logo" style="width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; display: block !important; object-fit: contain !important;">
                 </div>
                 <span class="text-xl font-bold text-slate-900 tracking-tight flex-shrink-0">
                     parc <span class="text-[#0066cc]">automobile</span>
